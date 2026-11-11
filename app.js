@@ -189,7 +189,7 @@ async function applyImport(data) {
     const ex = items.find(x => x.type === ty && re.test((x.name || '') + ' ' + (x.detail || '')));
     let photo = ex?.photo || null;
     if (w.photoData) { const r = await addDoc(ucol('photos'), { data: w.photoData, created: Date.now() }); photoCache.set(r.id, Promise.resolve(w.photoData)); if (ex?.photo) deleteDoc(uref('photos', ex.photo)).catch(() => {}); photo = r.id; }
-    if (ex) await updateDoc(uref('items', ex.id), { ...w.set, photo });
+    if (ex) { const rb = ex.paid == null && ex.baseDate === isoToday(); if (rb) baseBusy.delete(ex.id); await updateDoc(uref('items', ex.id), { ...w.set, photo, ...(rb ? { baseVal: null, baseDate: null } : {}) }); }
     else await addDoc(ucol('items'), ty === 'watch' ? { type: 'watch', paid: null, value: null, valueDate: '', ...w.set, photo, created: t++ } : { type: ty, paid: null, ...w.set, photo, created: t++ });
   }
   await setDoc(uref('meta', 'settings'), { imports: [...(settings?.imports || []), data.id] }, { merge: true });
