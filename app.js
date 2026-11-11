@@ -31,6 +31,7 @@ const PUR_JEWEL = [333, 375, 585, 750, 916, 999];
 const PUR_COIN = [999, 986, 925, 916, 900, 835, 800, 750, 720, 640, 625, 585, 500];
 const TYPES = { gold: 'Gold', watch: 'Uhren', coin: 'Münzen' };
 const C = { gold: '#c98500', watch: '#3987e5', coin: '#199e70', paid: '#3987e5', val: '#c98500' };
+const TAB_DEFAULT = 'gold';
 
 // ---------- Hilfen ----------
 const $ = id => document.getElementById(id);
@@ -48,7 +49,7 @@ const uref = (...p) => doc(db, 'users', user.uid, ...p);
 const ucol = (...p) => collection(db, 'users', user.uid, ...p);
 
 // ---------- Werte ----------
-const metalPrice = m => m === 'silver' ? (settings?.silver || 0) : (settings?.gold || 0);
+const metalPrice = m => cur(m === 'silver' ? 'silver' : 'gold');
 function material(x) {
   if (x.type === 'gold') return (x.weight || 0) * (x.purity || 0) / 1000 * metalPrice('gold');
   if (x.type === 'coin') return (x.count || 1) * (x.weight || 0) * (x.purity || 0) / 1000 * metalPrice(x.metal);
@@ -71,10 +72,12 @@ function totals(list = items) {
 }
 
 // ---------- Login ----------
+const GICON = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
 function renderLogin(msg) {
-  $('app').innerHTML = `<div class="login"><img src="icon-192.png" alt=""><h1>THESAUROS</h1>
-  <p>Deine Schatzkammer für Goldschmuck, Uhren und Münzen.</p>
-  <button class="gbtn" id="gl"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Mit Google anmelden</button>
+  $('app').innerHTML = `<div class="login"><img src="logo.svg" alt=""><h1>THESAUROS</h1>
+  <div class="status"><span class="dot"></span>SCHATZKAMMER · GESICHERT</div>
+  <p>Goldschmuck, Uhren und Münzen – mit Live-Preisen für Gold und Silber.</p>
+  <button class="gbtn" id="gl">${GICON}Mit Google anmelden</button>
   ${msg ? `<p class="neg">${esc(msg)}</p>` : ''}</div>`;
   $('gl').onclick = login;
 }
@@ -93,17 +96,17 @@ getRedirectResult(auth).catch(e => renderLogin('Anmeldung fehlgeschlagen: ' + e.
 onAuthStateChanged(auth, u => {
   unsubs.forEach(f => f()); unsubs = [];
   user = u; items = []; settings = null; history = [];
-  if (!u) { renderLogin(); return; }
+  if (!u) { stopLive(); renderLogin(); return; }
   render();
   unsubs.push(onSnapshot(ucol('items'), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); items.sort((a, b) => (a.created || 0) - (b.created || 0)); render(); }, err));
-  unsubs.push(onSnapshot(ucol('history'), s => { history = s.docs.map(d => ({ d: d.id, ...d.data() })).sort((a, b) => a.d < b.d ? -1 : 1); if (tab === 'charts') render(); }, err));
+  unsubs.push(onSnapshot(ucol('history'), s => { history = s.docs.map(d => ({ d: d.id, ...d.data() })).sort((a, b) => a.d < b.d ? -1 : 1); render(); }, err));
   unsubs.push(onSnapshot(uref('meta', 'settings'), { includeMetadataChanges: true }, async s => {
     settings = s.exists() ? s.data() : {};
     render();
     if (s.metadata.fromCache) return;          // erst entscheiden, wenn der Server geantwortet hat
     if (!settings.seeded) await seed();
-    if (settings.date !== isoToday() && !fetchPrices._busy) fetchPrices(true);
   }, err));
+  startLive();
 });
 function err(e) { console.error(e); toast(e.code === 'permission-denied' ? 'Kein Zugriff – Firestore-Regeln prüfen' : 'Fehler: ' + (e.code || e.message)); }
 
@@ -118,38 +121,76 @@ async function seed() {
     ['Fossil GMT', 'Lünette rot/schwarz, Stahlband', null]
   ];
   w.forEach(([name, detail, p], i) => b.set(doc(ucol('items')), { type: 'watch', name, detail, paid: p, value: null, valueDate: '', created: t + i }));
-  b.set(uref('meta', 'settings'), { seeded: true, gold: settings?.gold || 0, silver: settings?.silver || 0, date: settings?.date || '' }, { merge: true });
+  b.set(uref('meta', 'settings'), { seeded: true }, { merge: true });
   await b.commit().catch(err);
 }
 
-// ---------- Preise ----------
-async function fetchPrices(silent) {
-  if (fetchPrices._busy) return; fetchPrices._busy = true;
+// ---------- Live-Preise ----------
+// gold-api.com liefert den Spotpreis in USD je Feinunze (laufend aktualisiert),
+// frankfurter.app den EZB-Wechselkurs USD→EUR (einmal täglich).
+let live = null, liveTimer = null, fx = null, liveErr = false;
+const LIVE_MS = 60000, SAVE_MS = 30 * 60000;
+function startLive() { stopLive(); fetchLive(); liveTimer = setInterval(() => { if (!document.hidden) fetchLive(); }, LIVE_MS); }
+function stopLive() { if (liveTimer) clearInterval(liveTimer); liveTimer = null; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && user && (!live || Date.now() - live.at > LIVE_MS)) fetchLive(); });
+async function fetchLive(manual) {
+  if (fetchLive._busy) return; fetchLive._busy = true;
   try {
     const j = u => fetch(u, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-    const [xau, xag, fx] = await Promise.all([j('https://api.gold-api.com/price/XAU'), j('https://api.gold-api.com/price/XAG'), j('https://api.frankfurter.app/latest?from=USD&to=EUR')]);
-    const rate = fx?.rates?.EUR;
-    if (!xau?.price || !xag?.price || !rate) throw new Error('Antwort unvollständig');
-    const gold = +(xau.price * rate / OZ).toFixed(2), silver = +(xag.price * rate / OZ).toFixed(3);
-    await savePrices(gold, silver, true);
-    if (!silent) toast('Preise aktualisiert');
+    if (!fx || Date.now() - fx.at > 3600000) { const r = await j('https://api.frankfurter.app/latest?from=USD&to=EUR'); fx = { rate: r.rates.EUR, at: Date.now() }; }
+    const [xau, xag] = await Promise.all([j('https://api.gold-api.com/price/XAU'), j('https://api.gold-api.com/price/XAG')]);
+    if (!xau?.price || !xag?.price) throw new Error('Antwort unvollständig');
+    const goldOz = xau.price * fx.rate, silverOz = xag.price * fx.rate;
+    live = { goldOz, silverOz, gold: goldOz / OZ, silver: silverOz / OZ, at: Date.now(), src: xau.updatedAt || null };
+    liveErr = false;
+    paintLive();
+    const today = isoToday();
+    if (settings && (settings.date !== today || !settings.savedAt || Date.now() - settings.savedAt > SAVE_MS)) {
+      await savePrices(+live.gold.toFixed(2), +live.silver.toFixed(3), true);
+    }
+    if (manual) toast('Preise aktualisiert');
   } catch (e) {
-    console.warn('Preis-Abruf fehlgeschlagen', e);
-    if (!silent) toast('Preise konnten nicht geladen werden – bitte manuell eintragen');
-  } finally { fetchPrices._busy = false; }
+    console.warn('Preis-Abruf fehlgeschlagen', e); liveErr = true; paintLive();
+    if (manual) toast('Live-Preise nicht erreichbar – bitte manuell eintragen');
+  } finally { fetchLive._busy = false; }
 }
 async function savePrices(gold, silver, auto) {
   const d = isoToday();
-  await setDoc(uref('meta', 'settings'), { gold, silver, date: d, auto: !!auto }, { merge: true });
+  await setDoc(uref('meta', 'settings'), { gold, silver, date: d, auto: !!auto, savedAt: Date.now() }, { merge: true });
   await setDoc(uref('history', d), { gold, silver }, { merge: true });
 }
 function editPrices() {
   openM(`<h2>Preise eintragen</h2>
-  <div class="two"><div class="f"><label>Feingold (999) € / g</label><input id="pg" inputmode="decimal" value="${settings?.gold || ''}"></div>
-  <div class="f"><label>Feinsilber (999) € / g</label><input id="ps" inputmode="decimal" value="${settings?.silver || ''}"></div></div>
-  <div class="note" style="margin:0 0 12px">Normalerweise lädt Thesauros die Preise automatisch. Hier kannst du sie selbst eintragen, z. B. von goldpricez.com.</div>
+  <div class="two"><div class="f"><label>Gold 999 · € / g</label><input id="pg" inputmode="decimal" value="${(cur('gold') || '') && cur('gold').toFixed(2)}"></div>
+  <div class="f"><label>Silber 999 · € / g</label><input id="ps" inputmode="decimal" value="${(cur('silver') || '') && cur('silver').toFixed(3)}"></div></div>
+  <div class="note" style="margin:0 0 12px">Normalerweise kommen die Preise live. Wenn die Preisquelle einmal nicht erreichbar ist, kannst du sie hier selbst eintragen.</div>
   <div class="acts"><button class="cancel" data-a="close">Abbrechen</button><button class="ok" id="sp">Speichern</button></div>`);
-  $('sp').onclick = async () => { const g = num('pg'), s = num('ps'); if (!g || !s) return toast('Bitte beide Preise eintragen'); closeM(); await savePrices(g, s, false).catch(err); toast('Gespeichert'); };
+  $('sp').onclick = async () => { const g = num('pg'), s = num('ps'); if (!g || !s) return toast('Bitte beide Preise eintragen'); live = null; closeM(); await savePrices(g, s, false).catch(err); toast('Gespeichert'); };
+}
+// aktueller Preis €/g: live, sonst zuletzt gespeichert
+function cur(m) { return live ? live[m] : (settings?.[m] || 0); }
+function prevClose(m) { const t = isoToday(); return [...history].reverse().find(x => x.d < t && x[m]) || null; }
+const yesterday = () => { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+function paintLive() {
+  const box = $('mk'); if (!box) return;
+  box.innerHTML = marketsHTML();
+  const r = $('rf'); if (r) r.onclick = () => fetchLive(true);
+  const e = $('ep'); if (e) e.onclick = editPrices;
+  const hv = $('heroVal'); if (hv) { const t = totals(); hv.textContent = eur(t.val); }
+}
+function marketsHTML() {
+  const one = (m, name, cls2) => {
+    const g = cur(m), ph = prevClose(m), pc = ph ? ph[m] : null, ch = g && pc ? (g - pc) / pc * 100 : null;
+    const since = ph ? (ph.d === yesterday() ? 'seit gestern' : 'seit ' + deDate(ph.d).slice(0, 6)) : '';
+    return `<div class="mk ${cls2}"><div class="nm">${name} · 999</div>
+      <div class="pg">${g ? eur(g, 2) : '–'}<small>/ g</small></div>
+      <div class="oz">${g ? eur(g * OZ, 0) : '–'} <small>/ Unze</small></div>
+      <div class="ch ${ch == null ? 'mut' : cls(ch)}">${ch == null ? 'Verlauf startet heute' : (ch >= 0 ? '▲ ' : '▼ ') + pct(ch) + ' ' + since}</div></div>`;
+  };
+  const when = live ? 'Live · ' + new Date(live.at).toLocaleTimeString('de-AT') : settings?.date ? 'Stand ' + deDate(settings.date) + (settings.auto ? '' : ' · manuell') : 'Lade Preise …';
+  return `<div class="mk-head"><span class="lbl">Märkte · Spotpreis</span><span class="live"><span class="dot ${live && !liveErr ? '' : 'off'}"></span>${live && !liveErr ? 'LIVE' : liveErr ? 'OFFLINE' : '…'}</span></div>
+   <div class="markets">${one('gold', 'GOLD', 'g')}${one('silver', 'SILBER', 's')}</div>
+   <div class="mk-foot"><small>${when}</small><div style="display:flex;gap:8px"><button class="btn" id="rf">Aktualisieren</button><button class="btn" id="ep">Manuell</button></div></div>`;
 }
 
 // ---------- Fotos ----------
@@ -199,40 +240,61 @@ function wirePhotoInputs() {
 }
 
 // ---------- Ansicht ----------
+function ringSVG(parts, total) {
+  const R = 100, cx = 125, cy = 125, C2 = 2 * Math.PI * R, gap = 6;
+  let off = 0, segs = '';
+  const used = parts.filter(p => p.v > 0);
+  if (total > 0) used.forEach(p => {
+    const len = Math.max(0, p.v / total * C2 - (used.length > 1 ? gap : 0));
+    segs += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${C[p.k]}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${len} ${C2}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})" style="filter:drop-shadow(0 0 6px ${C[p.k]}88)"/>`;
+    off += p.v / total * C2;
+  });
+  else segs = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(79,214,255,.18)" stroke-width="7"/>`;
+  let ticks = '';
+  for (let i = 0; i < 72; i++) { const a = i * 5 * Math.PI / 180, l = i % 6 === 0 ? 7 : 3, r1 = 117, r2 = r1 + l; ticks += `<line x1="${cx + r1 * Math.cos(a)}" y1="${cy + r1 * Math.sin(a)}" x2="${cx + r2 * Math.cos(a)}" y2="${cy + r2 * Math.sin(a)}"/>`; }
+  return `<svg viewBox="0 0 250 250" aria-hidden="true">
+   <g class="spin" stroke="#4fd6ff" stroke-opacity=".45" stroke-width="1">${ticks}</g>
+   <g class="spin2"><circle cx="${cx}" cy="${cy}" r="88" fill="none" stroke="#4fd6ff" stroke-opacity=".25" stroke-width="1" stroke-dasharray="2 6"/>
+    <path d="M ${cx - 88} ${cy} A 88 88 0 0 1 ${cx - 62} ${cy - 62}" fill="none" stroke="#4fd6ff" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M ${cx + 88} ${cy} A 88 88 0 0 1 ${cx + 62} ${cy + 62}" fill="none" stroke="#4fd6ff" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round"/></g>
+   <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="7"/>
+   ${segs}</svg>`;
+}
 function render() {
   if (!user) return;
   const t = totals();
   const list = items.filter(x => x.type === tab);
   const counts = { gold: 0, watch: 0, coin: 0 }; items.forEach(x => counts[x.type] = (counts[x.type] || 0) + 1);
+  const parts = ['gold', 'watch', 'coin'].map(k => ({ k, v: items.filter(x => x.type === k).reduce((a, x) => a + (value(x) || 0), 0) }));
   let body;
   if (tab === 'charts') body = '<div id="charts"></div>';
-  else if (!list.length) body = `<div class="empty">${{ gold: 'Noch kein Goldschmuck eingetragen.', watch: 'Noch keine Uhren eingetragen.', coin: 'Noch keine Münzen eingetragen.' }[tab]}<br>Tipp unten auf „+ Hinzufügen“.</div>`;
+  else if (!list.length) body = `<div class="empty">${{ gold: 'Noch kein Goldschmuck erfasst.', watch: 'Noch keine Uhren erfasst.', coin: 'Noch keine Münzen erfasst.' }[tab]}<br>Tippe unten auf „+ Hinzufügen“.</div>`;
   else body = list.map(rowHTML).join('');
-  const pr = settings || {};
   const scrollY = window.scrollY;
   $('app').innerHTML = `<div class="wrap">
-  <div class="top"><h1><img src="icon-192.png" alt="">THESAUROS</h1>
-   <img class="avatar" id="av" src="${esc(user.photoURL || 'icon-192.png')}" alt="Konto" referrerpolicy="no-referrer"></div>
+  <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
+   <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
   <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="lo">Abmelden</button></div>
-  <div class="sub">Gold, Uhren &amp; Münzen – Kaufpreis, Wert, Gewinn</div>
-  <div class="hero"><div class="lbl">Gesamtwert heute</div><div class="big">${eur(t.val)}</div>
-   <div class="row"><div class="stat"><span class="lbl">Bezahlt</span><b>${eur(t.paid)}</b></div>
-   <div class="stat"><span class="lbl">Gewinn</span><b class="${cls(t.diff)}">${sgn(t.diff)}</b></div>
-   <div class="stat"><span class="lbl">Rendite</span><b class="${cls(t.diff)}">${t.paid ? pct(t.diff / t.paid * 100) : '–'}</b></div></div></div>
-  <div class="prices"><span class="lbl">Edelmetallpreise pro Gramm</span>
-   <div class="pr"><div class="g"><small>Gold 999</small><b>${pr.gold ? eur(pr.gold, 2) : '–'}</b></div><div class="s"><small>Silber 999</small><b>${pr.silver ? eur(pr.silver, 2) : '–'}</b></div></div>
-   <div class="foot"><small>${pr.date ? 'Stand ' + deDate(pr.date) + (pr.auto ? ' · automatisch' : ' · manuell') : 'Noch kein Preis geladen'}</small>
-   <div class="btns"><button class="btn" id="rf">Laden</button><button class="btn" id="ep">Eintragen</button></div></div></div>
-  <div class="tabs">${['gold', 'watch', 'coin'].map(k => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${TYPES[k]} (${counts[k] || 0})</button>`).join('')}<button class="${tab === 'charts' ? 'on' : ''}" data-tab="charts">Diagramme</button></div>
+  <div class="panel hud hero">
+   <span class="lbl">Gesamtwert</span>
+   <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
+     <span class="gain ${cls(t.diff)}">${sgn(t.diff)}${t.paid ? ' · ' + pct(t.diff / t.paid * 100) : ''}</span>
+     <span class="lbl" style="margin-top:6px">${items.length} Objekte</span></div></div>
+   <div class="legend3">${parts.map(p => `<span><i style="background:${C[p.k]}"></i>${TYPES[p.k]}</span>`).join('')}</div>
+   <div class="stats"><div class="stat"><span class="lbl">Bezahlt</span><b>${eur(t.paid)}</b></div>
+    <div class="stat"><span class="lbl">Gewinn</span><b class="${cls(t.diff)}">${sgn(t.diff)}</b></div>
+    <div class="stat"><span class="lbl">Rendite</span><b class="${cls(t.diff)}">${t.paid ? pct(t.diff / t.paid * 100) : '–'}</b></div></div>
+  </div>
+  <div class="panel hud" id="mk">${marketsHTML()}</div>
+  <div class="tabs">${['gold', 'watch', 'coin'].map(k => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${TYPES[k]} · ${counts[k] || 0}</button>`).join('')}<button class="${tab === 'charts' ? 'on' : ''}" data-tab="charts">Analyse</button></div>
   ${body}
-  <div class="note">Goldwert = Gewicht × Feingehalt × Goldpreis (reiner Materialwert); Händler zahlen beim Ankauf meist 5–15 % weniger. Münzen zählen mit dem höheren Wert aus Material- und Sammlerwert. Uhren- und Sammlerwerte sind deine eigenen Schätzungen.</div>
+  <div class="note">Goldwert = Gewicht × Feingehalt × Spotpreis (reiner Materialwert); Händler zahlen beim Ankauf meist 5–15 % weniger. Münzen zählen mit dem höheren Wert aus Material- und Sammlerwert. Uhren- und Sammlerwerte sind deine eigenen Schätzungen. Preise: gold-api.com, Wechselkurs EZB via frankfurter.app.</div>
   </div>
   ${tab === 'charts' ? '' : '<button class="fab" id="add">+ Hinzufügen</button>'}`;
   window.scrollTo(0, scrollY);
   $('av').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('open'); };
   $('lo').onclick = () => signOut(auth);
-  $('rf').onclick = () => fetchPrices(false);
-  $('ep').onclick = editPrices;
+  paintLive();
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.querySelectorAll('[data-item]').forEach(el => el.onclick = () => editItem(el.dataset.item));
   if ($('add')) $('add').onclick = () => editItem(null);
@@ -240,6 +302,7 @@ function render() {
   hydratePhotos();
 }
 document.addEventListener('click', () => $('menu')?.classList.remove('open'));
+setInterval(() => { const c = $('clk'); if (c) c.textContent = 'SYSTEM ONLINE · ' + new Date().toLocaleTimeString('de-AT'); }, 1000);
 
 function rowHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null;
@@ -248,14 +311,14 @@ function rowHTML(x) {
   else if (x.type === 'watch') sub = `${esc(x.detail)}${x.valueDate ? ' · Wert vom ' + deDate(x.valueDate) : ''}`;
   else {
     sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g${x.origin ? ' · ' + esc(x.origin) : ''}`;
-    extra = `<div class="dual">Material ${eur(material(x))}${x.collector != null ? ' · Sammler ' + eur(x.collector * (x.count || 1)) : ''}</div>`;
+    extra = `<div class="dual">MATERIAL ${eur(material(x))}${x.collector != null ? ' · SAMMLER ' + eur(x.collector * (x.count || 1)) : ''}</div>`;
   }
   let st;
   if (d != null && p) st = `<span class="${cls(d)}">${sgn(d)} · ${pct(d / p * 100)}</span>`;
   else if (x.type === 'watch' && x.paid == null) st = '<span class="mut">Preis eintragen</span>';
   else if (x.type === 'watch' && x.value == null) st = '<span class="mut">Schätzwert fehlt</span>';
   else st = '<span class="mut">Kaufpreis fehlt</span>';
-  return `<div class="item" data-item="${x.id}"><div class="lft">${x.photo ? `<img class="th" data-photo="${x.photo}" alt="">` : ''}<div><div class="n">${esc(x.name)}</div><div class="d">${sub}</div>${extra}</div></div>
+  return `<div class="item" data-item="${x.id}" style="--acc:${C[x.type]}"><div class="lft">${x.photo ? `<img class="th" data-photo="${x.photo}" alt="">` : ''}<div><div class="n">${esc(x.name)}</div><div class="d">${sub}</div>${extra}</div></div>
    <div class="v"><b>${eur(v)}</b>${st}</div></div>`;
 }
 
@@ -354,7 +417,7 @@ function drawCharts() {
     let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kaufpreis und Wert pro Stück">`;
     R.forEach((r, i) => {
       const y = i * rowH, n = r.x.name.length > 36 ? r.x.name.slice(0, 35) + '…' : r.x.name;
-      s += `<text x="0" y="${y + 12}" fill="#e7edf3" font-size="12" font-family="Inter,sans-serif">${esc(n)}</text>`;
+      s += `<text x="0" y="${y + 12}" fill="#e9f1f7" font-size="12" font-family="Inter,sans-serif">${esc(n)}</text>`;
       if (r.p) s += `<rect x="0" y="${y + 18}" width="${sc(r.p)}" height="8" rx="4" fill="${C.paid}"/>`;
       if (r.v) s += `<rect x="0" y="${y + 28}" width="${sc(r.v)}" height="8" rx="4" fill="${C.val}"/>` + txt(sc(r.v) + 6, y + 36, eur(r.v));
       s += `<rect class="hit" data-i="${i}" x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>`;
@@ -384,11 +447,11 @@ function drawCharts() {
     const X = i => pl + ((new Date(P[i].d).getTime() - t0) / ((t1 - t0) || 1)) * (W - pl - pr), Y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
     const sd = iso => { const [, m, d] = iso.split('-'); return d + '.' + m + '.'; };
     let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Metallwert im Verlauf">`;
-    [0, 0.5, 1].forEach(f => { const yy = pt + f * (H - pt - pb); s += `<line x1="0" x2="${W}" y1="${yy}" y2="${yy}" stroke="#1f2a36"/>`; if (f !== 0.5) s += txt(W, yy - 4, eur(mx - f * (mx - mn)), 'text-anchor="end" font-size="10"'); });
+    [0, 0.5, 1].forEach(f => { const yy = pt + f * (H - pt - pb); s += `<line x1="0" x2="${W}" y1="${yy}" y2="${yy}" stroke="rgba(79,214,255,.12)"/>`; if (f !== 0.5) s += txt(W, yy - 4, eur(mx - f * (mx - mn)), 'text-anchor="end" font-size="10"'); });
     s += `<path d="${P.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ')}" fill="none" stroke="${C.val}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
     s += `<line id="xh" y1="${pt}" y2="${H - pb}" stroke="#8796a6" opacity="0"/>`;
-    [0, P.length - 1].forEach(i => s += `<circle cx="${X(i)}" cy="${Y(P[i].v)}" r="4" fill="${C.val}" stroke="#0f141b" stroke-width="2"/>`);
-    s += `<circle id="hd" r="5" fill="${C.val}" stroke="#0f141b" stroke-width="2" opacity="0"/>`;
+    [0, P.length - 1].forEach(i => s += `<circle cx="${X(i)}" cy="${Y(P[i].v)}" r="4" fill="${C.val}" stroke="#070b11" stroke-width="2"/>`);
+    s += `<circle id="hd" r="5" fill="${C.val}" stroke="#070b11" stroke-width="2" opacity="0"/>`;
     s += txt(0, H - 6, sd(P[0].d)) + txt(W, H - 6, sd(P[P.length - 1].d), 'text-anchor="end"');
     s += `<rect id="hz" width="${W}" height="${H}" fill="transparent"/></svg>`;
     const d = P[P.length - 1].v - P[0].v;
