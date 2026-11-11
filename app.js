@@ -186,7 +186,10 @@ async function applyImport(data) {
   for (const w of data.items || []) {
     const re = new RegExp(w.match, 'i');
     const ty = w.type || 'watch';
-    const ex = items.find(x => x.type === ty && re.test((x.name || '') + ' ' + (x.detail || '')));
+    const exs = items.filter(x => x.type === ty && (re.test(x.name || '') || re.test((x.name || '') + ' ' + (x.detail || ''))))
+      .sort((p, q) => ((q.paid != null) - (p.paid != null)) || ((p.created || 0) - (q.created || 0)));
+    const ex = exs[0];
+    for (const d of exs.slice(1)) { await deleteDoc(uref('items', d.id)); if (d.photo && d.photo !== ex.photo) deleteDoc(uref('photos', d.photo)).catch(() => {}); items = items.filter(i => i.id !== d.id); }
     let photo = ex?.photo || null;
     if (w.photoData) { const r = await addDoc(ucol('photos'), { data: w.photoData, created: Date.now() }); photoCache.set(r.id, Promise.resolve(w.photoData)); if (ex?.photo) deleteDoc(uref('photos', ex.photo)).catch(() => {}); photo = r.id; }
     if (ex) { const rb = ex.paid == null && ex.baseDate === isoToday(); if (rb) baseBusy.delete(ex.id); await updateDoc(uref('items', ex.id), { ...w.set, photo, ...(rb ? { baseVal: null, baseDate: null } : {}) }); }
@@ -362,7 +365,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 14</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 15</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
