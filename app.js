@@ -156,7 +156,7 @@ async function checkImport(manual) {
    <div class="acts"><button class="cancel" data-a="close">Später</button><button class="ok" id="ido">Übernehmen</button></div>`);
   $('ido').onclick = async () => {
     const btn = $('ido'); btn.disabled = true; btn.textContent = 'Übernehme …';
-    try { const data = await decryptPkg(pkg, val('ipw').toUpperCase()); await applyImport(data); closeM(); toast('Übernommen ✓'); }
+    try { const data = await decryptPkg(pkg, val('ipw').replace(/\s+/g, '').toUpperCase()); await applyImport(data); closeM(); toast('Übernommen ✓'); }
     catch (e) { console.error(e); btn.disabled = false; btn.textContent = 'Übernehmen'; toast(e.name === 'OperationError' ? 'Falsches Passwort' : 'Fehler: ' + (e.code || e.message)); }
   };
 }
@@ -349,7 +349,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 12</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 13</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
