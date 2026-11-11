@@ -48,6 +48,15 @@ function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('sh
 const uref = (...p) => doc(db, 'users', user.uid, ...p);
 const ucol = (...p) => collection(db, 'users', user.uid, ...p);
 
+// ---------- Marktpreise Uhren (market.json, halbjährlich aktualisiert) ----------
+let market = null;
+fetch('market.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { market = j; render(); }).catch(() => {});
+function marketFor(x) {
+  if (x.type !== 'watch' || !market?.watches) return null;
+  const hay = (x.name || '') + ' ' + (x.detail || '');
+  return market.watches.find(w => { try { return new RegExp(w.match, 'i').test(hay); } catch (e) { return false; } }) || null;
+}
+
 // ---------- Werte ----------
 const metalPrice = m => cur(m === 'silver' ? 'silver' : 'gold');
 function material(x) {
@@ -57,7 +66,7 @@ function material(x) {
 }
 function value(x) {
   if (x.type === 'gold') return material(x);
-  if (x.type === 'watch') return x.value ?? x.paid ?? null;
+  if (x.type === 'watch') return x.value ?? marketFor(x)?.avg ?? x.paid ?? null;
   const m = material(x), c = x.collector != null ? x.collector * (x.count || 1) : null;
   return c != null ? Math.max(c, m) : m;
 }
@@ -308,7 +317,11 @@ function rowHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null;
   let sub, extra = '';
   if (x.type === 'gold') sub = `${x.weight} g · ${x.purity}er${x.date ? ' · ' + esc(x.date) : ''}`;
-  else if (x.type === 'watch') sub = `${esc(x.detail)}${x.valueDate ? ' · Wert vom ' + deDate(x.valueDate) : ''}`;
+  else if (x.type === 'watch') {
+    sub = `${esc(x.detail)}${x.valueDate && x.value != null ? ' · Schätzung vom ' + deDate(x.valueDate) : ''}`;
+    const mk = marketFor(x);
+    if (mk) extra = `<div class="dual">MARKT Ø ${eur(mk.avg)} · ${eur(mk.min)}–${eur(mk.max)} · ${mk.points?.length || 0} QUELLEN${x.value != null ? ' · DEINE SCHÄTZUNG ZÄHLT' : ''}</div>`;
+  }
   else {
     sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g${x.origin ? ' · ' + esc(x.origin) : ''}`;
     extra = `<div class="dual">MATERIAL ${eur(material(x))}${x.collector != null ? ' · SAMMLER ' + eur(x.collector * (x.count || 1)) : ''}</div>`;
@@ -316,7 +329,7 @@ function rowHTML(x) {
   let st;
   if (d != null && p) st = `<span class="${cls(d)}">${sgn(d)} · ${pct(d / p * 100)}</span>`;
   else if (x.type === 'watch' && x.paid == null) st = '<span class="mut">Preis eintragen</span>';
-  else if (x.type === 'watch' && x.value == null) st = '<span class="mut">Schätzwert fehlt</span>';
+  else if (x.type === 'watch' && x.value == null && !marketFor(x)) st = '<span class="mut">Schätzwert fehlt</span>';
   else st = '<span class="mut">Kaufpreis fehlt</span>';
   return `<div class="item" data-item="${x.id}" style="--acc:${C[x.type]}"><div class="lft">${x.photo ? `<img class="th" data-photo="${x.photo}" alt="">` : ''}<div><div class="n">${esc(x.name)}</div><div class="d">${sub}</div>${extra}</div></div>
    <div class="v"><b>${eur(v)}</b>${st}</div></div>`;
@@ -344,7 +357,8 @@ function editItem(id) {
     <div class="f"><label>Modell</label><input id="nm" value="${esc(x?.name)}" placeholder="z. B. Omega Seamaster"></div>
     <div class="f"><label>Details</label><input id="de" value="${esc(x?.detail)}" placeholder="Referenz, Material …"></div>
     <div class="two"><div class="f"><label>Kaufpreis (€)</label><input id="pd" inputmode="decimal" value="${x?.paid ?? ''}"></div>
-    <div class="f"><label>Schätzwert heute (€)</label><input id="vl" inputmode="decimal" value="${x?.value ?? ''}"></div></div>
+    <div class="f"><label>Eigene Schätzung (€)</label><input id="vl" inputmode="decimal" value="${x?.value ?? ''}" placeholder="${x && marketFor(x) ? 'leer = Marktpreis' : 'optional'}"></div></div>
+    ${x && marketFor(x) ? (() => { const mk = marketFor(x); return `<div class="note" style="margin:-4px 0 12px">Marktpreis Ø ${eur(mk.avg)} (Spanne ${eur(mk.min)}–${eur(mk.max)}), Stand ${deDate(market.updated)}:<br>${mk.points.map(p => `· ${esc(p.kind)}: ${eur(p.eur)} – <a href="${esc(p.url)}" target="_blank" rel="noopener" style="color:var(--cyan2)">${esc(p.src)}</a>`).join('<br>')}<br>Lass das Feld leer, damit automatisch der Marktpreis zählt.</div>`; })() : ''}
     <div class="f"><label>Foto</label><div class="phrow">${photoField('photo', '', x)}</div></div>`;
   else f = `
     <div class="f"><label>Münze</label><input id="nm" value="${esc(x?.name)}" placeholder="z. B. Wiener Philharmoniker 1 oz"></div>
@@ -459,7 +473,34 @@ function drawCharts() {
     drawCharts._line = { P, X, Y };
   }
   h3 += '<div class="tip"></div></div>';
-  box.innerHTML = h1 + h2 + h3;
+  // 4) Uhren am Markt
+  const WM = items.filter(x => x.type === 'watch').map(x => ({ x, mk: marketFor(x) })).filter(r => r.mk);
+  let h4 = '<div class="card" id="c4"><h3>Uhren am Markt</h3><div class="cs">Spanne der Online-Preise, Durchschnitt und dein Kaufpreis' + (market?.updated ? ' · Stand ' + deDate(market.updated) : '') + '</div>';
+  if (!WM.length) h4 += '<div class="empty">Für deine Uhren liegen noch keine Marktpreise vor.</div>';
+  else {
+    h4 += `<div class="legend"><span><i style="background:rgba(79,214,255,.35)"></i>Spanne</span><span><i style="background:${C.val}"></i>Markt Ø</span><span><i style="background:${C.paid}"></i>Dein Kaufpreis</span></div>`;
+    const hi = Math.max(...WM.map(r => Math.max(r.mk.max, r.x.paid || 0))) * 1.08, rowH = 58, H = WM.length * rowH;
+    const sx = v => 4 + v / hi * (W - 8);
+    let s4 = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Marktpreise der Uhren">`;
+    WM.forEach((r, i) => {
+      const y = i * rowH, cy = y + 42;
+      s4 += `<text x="0" y="${y + 12}" fill="#e9f1f7" font-size="12" font-family="Inter,sans-serif">${esc(r.x.name)}</text>`;
+      s4 += `<rect x="${sx(r.mk.min)}" y="${cy - 5}" width="${Math.max(4, sx(r.mk.max) - sx(r.mk.min))}" height="10" rx="5" fill="rgba(79,214,255,.22)" stroke="rgba(79,214,255,.5)"/>`;
+      if (r.x.paid) s4 += `<line x1="${sx(r.x.paid)}" x2="${sx(r.x.paid)}" y1="${cy - 10}" y2="${cy + 10}" stroke="${C.paid}" stroke-width="3" stroke-linecap="round"/>`;
+      s4 += `<circle cx="${sx(r.mk.avg)}" cy="${cy}" r="6" fill="${C.val}" stroke="#070b11" stroke-width="2"/>`;
+      s4 += `<text x="${Math.min(W - 30, Math.max(30, sx(r.mk.avg)))}" y="${cy - 11}" text-anchor="middle" fill="#ffe2a3" font-size="11" font-weight="600" font-family="Inter,sans-serif">Ø ${eur(r.mk.avg)}</text>`;
+      s4 += `<rect class="hit4" data-i="${i}" x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>`;
+    });
+    h4 += s4 + '</svg>';
+  }
+  h4 += '<div class="tip"></div></div>';
+  box.innerHTML = h1 + h4 + h2 + h3;
+  const c4 = $('c4');
+  if (c4) c4.querySelectorAll('.hit4').forEach(el => {
+    const r = WM[+el.dataset.i];
+    const show = ev => { const d = r.x.paid ? r.mk.avg - r.x.paid : null; tipAt(c4, ev, `<b>${esc(r.mk.label)}</b><br>Markt Ø ${eur(r.mk.avg)} · ${eur(r.mk.min)}–${eur(r.mk.max)}<br>Dein Kaufpreis: ${eur(r.x.paid)}${d != null ? `<br><span class="${cls(d)}">${sgn(d)} zum Markt Ø</span>` : ''}`); };
+    el.addEventListener('pointermove', show); el.addEventListener('pointerdown', show); el.addEventListener('pointerleave', () => hideTip(c4));
+  });
 
   const c1 = $('c1');
   c1.querySelectorAll('.hit').forEach(el => {
