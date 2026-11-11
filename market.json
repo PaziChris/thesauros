@@ -154,6 +154,33 @@
           "url": "https://sovietwatchstore.com/index.php/product/vintage-soviet-luch-automatic-quartz-watch-1937-soviet-transpolar-flight/"
         }
       ]
+    },
+    {
+      "match": "sperulino|susm402",
+      "label": "Swatch Sperulino SUSM402 (Neuzustand; getragen meist 50–70 €)",
+      "avg": 120,
+      "min": 105,
+      "max": 125,
+      "points": [
+        {
+          "kind": "Neupreis OVP Händler (nicht lieferbar)",
+          "eur": 125,
+          "src": "watchpapst.de",
+          "url": "https://www.watchpapst.de/de/sperulino-susm402.html"
+        },
+        {
+          "kind": "Neupreis Händler",
+          "eur": 125,
+          "src": "Crivelli Shopping",
+          "url": "https://crivellishopping.it/de/swatch-herrenuhr-susm402-originals-chrono-plastic-sperulino-chronograph"
+        },
+        {
+          "kind": "Ursprünglicher Ladenpreis",
+          "eur": 105,
+          "src": "Switzerwatch",
+          "url": "https://www.switzerwatch.com/english-swatch-new-chrono-plastic/watch-swatch-sperulino.html"
+        }
+      ]
     }
   ]
 }
