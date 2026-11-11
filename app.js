@@ -344,7 +344,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 10</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
