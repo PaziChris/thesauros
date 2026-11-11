@@ -51,7 +51,7 @@ const ucol = (...p) => collection(db, 'users', user.uid, ...p);
 
 // ---------- Marktpreise Uhren (market.json, halbjährlich aktualisiert) ----------
 let market = null;
-fetch('market.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { market = j; render(); }).catch(() => {});
+fetch('market.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { market = j; render(); }).catch(() => {});
 function marketFor(x) {
   if (x.type !== 'watch' || !market?.watches) return null;
   const hay = (x.name || '') + ' ' + (x.detail || '');
@@ -60,7 +60,7 @@ function marketFor(x) {
 
 // ---------- Kursverlauf (prices.json, täglich per GitHub Action) ----------
 let priceHist = null, kv = { m: 'gold', r: '1J' };
-fetch('prices.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { priceHist = j; if (liveErr && !live && user) fetchLive(); if (tab === 'charts') render(); }).catch(() => {});
+fetch('prices.json?t=' + Date.now(), { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { priceHist = j; if (liveErr && !live && user) fetchLive(); if (tab === 'charts') render(); }).catch(() => {});
 const RANGES = { '1M': 31, '6M': 183, '1J': 366, '5J': 1827, 'Max': 99999 };
 
 // ---------- Werte ----------
@@ -142,10 +142,10 @@ async function seed() {
 }
 
 // ---------- Import vorbereiteter Daten (verschlüsselt, import.json) ----------
-async function checkImport() {
+async function checkImport(manual) {
   if (checkImport._done) return; checkImport._done = true;
-  let pkg; try { const r = await fetch('import.json', { cache: 'no-store' }); if (!r.ok) return; pkg = await r.json(); } catch (e) { return; }
-  if (!pkg?.id || (settings?.imports || []).includes(pkg.id)) return;
+  let pkg; try { const r = await fetch('import.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { if (manual) toast('Keine neuen Daten'); return; } pkg = await r.json(); } catch (e) { if (manual) toast('Keine neuen Daten'); return; }
+  if (!pkg?.id || (settings?.imports || []).includes(pkg.id)) { if (manual) toast('Keine neuen Daten – schon übernommen'); return; }
   openM(`<h2>Neue Daten bereit</h2>
    <div class="note" style="margin:0 0 12px">Claude hat <b>${esc(pkg.title || 'Daten')}</b> für dich vorbereitet. Gib das Passwort aus dem Chat ein, um sie in deine Schatzkammer zu übernehmen.</div>
    <div class="f"><label>Passwort</label><input id="ipw" autocomplete="off" autocapitalize="characters" placeholder="z. B. A1B2C3"></div>
@@ -344,7 +344,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
@@ -364,6 +364,7 @@ function render() {
   window.scrollTo(0, scrollY);
   $('av').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('open'); };
   $('lo').onclick = () => signOut(auth);
+  $('imp').onclick = () => { checkImport._done = false; checkImport(true); };
   paintLive();
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.querySelectorAll('[data-item]').forEach(el => el.onclick = () => editItem(el.dataset.item));
