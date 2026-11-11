@@ -27,9 +27,10 @@ let pend = {}, rm = {};          // neue Fotos / zu entfernende Fotos im offenen
 let editing = null;              // {type, id}
 
 const OZ = 31.1034768;
-const PUR_JEWEL = [333, 375, 585, 750, 916, 999];
+const PUR = { gold: [333, 375, 585, 750, 900, 916, 986, 999], silver: [500, 625, 640, 720, 800, 835, 900, 925, 935, 958, 999] };
+const PUR_LABEL = { 333: '333 · 8 Kt', 375: '375 · 9 Kt', 585: '585 · 14 Kt', 750: '750 · 18 Kt', 900: '900', 916: '916 · 22 Kt', 986: '986 · Dukaten', 999: '999 · Fein', 800: '800', 835: '835', 925: '925 · Sterling', 935: '935', 958: '958 · Britannia' };
 const PUR_COIN = [999, 986, 925, 916, 900, 835, 800, 750, 720, 640, 625, 585, 500];
-const TYPES = { gold: 'Gold', watch: 'Uhren', coin: 'Münzen' };
+const TYPES = { gold: 'Schmuck', watch: 'Uhren', coin: 'Münzen' };
 const C = { gold: '#ffb84a', watch: '#5ea8ff', coin: '#3ee0a6', paid: '#5ea8ff', val: '#ffb84a' };
 const TAB_DEFAULT = 'gold';
 
@@ -65,7 +66,7 @@ const RANGES = { '1M': 31, '6M': 183, '1J': 366, '5J': 1827, 'Max': 99999 };
 // ---------- Werte ----------
 const metalPrice = m => cur(m === 'silver' ? 'silver' : 'gold');
 function material(x) {
-  if (x.type === 'gold') return (x.weight || 0) * (x.purity || 0) / 1000 * metalPrice('gold');
+  if (x.type === 'gold') return (x.weight || 0) * (x.purity || 0) / 1000 * metalPrice(x.metal || 'gold');
   if (x.type === 'coin') return (x.count || 1) * (x.weight || 0) * (x.purity || 0) / 1000 * metalPrice(x.metal);
   return null;
 }
@@ -321,7 +322,7 @@ function render() {
   const parts = ['gold', 'watch', 'coin'].map(k => ({ k, v: items.filter(x => x.type === k).reduce((a, x) => a + (value(x) || 0), 0) }));
   let body;
   if (tab === 'charts') body = '<div id="charts"></div>';
-  else if (!list.length) body = `<div class="empty">${{ gold: 'Noch kein Goldschmuck erfasst.', watch: 'Noch keine Uhren erfasst.', coin: 'Noch keine Münzen erfasst.' }[tab]}<br>Tippe unten auf „+ Hinzufügen“.</div>`;
+  else if (!list.length) body = `<div class="empty">${{ gold: 'Noch kein Schmuck erfasst.', watch: 'Noch keine Uhren erfasst.', coin: 'Noch keine Münzen erfasst.' }[tab]}<br>Tippe unten auf „+ Hinzufügen“.</div>`;
   else body = '<div class="grid">' + list.map(tileHTML).join('') + '</div>';
   const scrollY = window.scrollY;
   $('app').innerHTML = `<div class="wrap">
@@ -360,13 +361,13 @@ setInterval(() => { const c = $('clk'); if (c) c.textContent = 'SYSTEM ONLINE ·
 function tileHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null, mk = marketFor(x);
   let sub;
-  if (x.type === 'gold') sub = `${x.weight} g · ${x.purity}er`;
+  if (x.type === 'gold') sub = `${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g`;
   else if (x.type === 'watch') sub = esc(x.detail || '');
   else sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g`;
   let pill;
   if (d != null && p) pill = `<span class="pill ${cls(d)}">${d >= 0 ? '▲' : '▼'} ${sgn(d)} · ${pct(d / p * 100)}</span>`;
   else pill = `<span class="pill">${x.type === 'watch' && x.paid == null ? 'Kaufpreis eintragen' : 'Kaufpreis fehlt'}</span>`;
-  const tag = { gold: 'GOLD', watch: 'UHR', coin: x.metal === 'silver' ? 'SILBER' : 'GOLDMÜNZE' }[x.type];
+  const tag = { gold: x.metal === 'silver' ? 'SILBER' : 'GOLD', watch: 'UHR', coin: x.metal === 'silver' ? 'SILBER' : 'GOLDMÜNZE' }[x.type];
   const media = x.photo ? `<img class="ph" data-photo="${x.photo}" alt="">` : `<div class="noph" style="--acc:${C[x.type]}">${esc((x.name || '?').trim()[0] || '?')}</div>`;
   return `<div class="tile" data-item="${x.id}">${media}<span class="tag">${tag}</span>${mk && x.value == null ? '<span class="mkt">MARKT</span>' : ''}
    <div class="bd"><div class="n">${esc(x.name)}</div><div class="d">${sub}</div><div class="v">${eur(v)}</div>${pill}</div></div>`;
@@ -398,6 +399,8 @@ function openM(html) { $('sh').innerHTML = html; $('m').classList.add('open'); $
 function closeM() { $('m').classList.remove('open'); pend = {}; rm = {}; editing = null; }
 $('m').onclick = e => { if (e.target.id === 'm') closeM(); };
 const opt = (arr, cur, lab) => arr.map(v => `<option value="${v}" ${+cur === v ? 'selected' : ''}>${lab ? lab(v) : v}</option>`).join('');
+const metalOpt = m => `<option value="gold" ${m === 'gold' ? 'selected' : ''}>Gold</option><option value="silver" ${m === 'silver' ? 'selected' : ''}>Silber</option>`;
+const purOpt = (m, cur) => { const list = PUR[m]; const c = list.includes(+cur) ? +cur : (m === 'gold' ? 585 : 925); return list.map(v => `<option value="${v}" ${v === c ? 'selected' : ''}>${PUR_LABEL[v] || v}</option>`).join(''); };
 const karat = { 333: '8 Kt', 375: '9 Kt', 585: '14 Kt', 750: '18 Kt', 916: '22 Kt', 999: '24 Kt' };
 
 function editItem(id) {
@@ -406,8 +409,9 @@ function editItem(id) {
   let f = '';
   if (type === 'gold') f = `
     <div class="f"><label>Bezeichnung</label><input id="nm" value="${esc(x?.name)}" placeholder="z. B. Goldkette Panzer"></div>
-    <div class="two"><div class="f"><label>Gewicht (g)</label><input id="wt" inputmode="decimal" value="${x?.weight ?? ''}"></div>
-    <div class="f"><label>Feingehalt (Stempel)</label><select id="pu">${opt(PUR_JEWEL, x?.purity ?? 585, v => `${v} (${karat[v]})`)}</select></div></div>
+    <div class="two"><div class="f"><label>Metall</label><select id="mt">${metalOpt(x?.metal || 'gold')}</select></div>
+    <div class="f"><label>Feingehalt (Stempel)</label><select id="pu">${purOpt(x?.metal || 'gold', x?.purity)}</select></div></div>
+    <div class="f"><label>Gewicht (g)</label><input id="wt" inputmode="decimal" value="${x?.weight ?? ''}"></div>
     <div class="two"><div class="f"><label>Kaufpreis (€)</label><input id="pd" inputmode="decimal" value="${x?.paid ?? ''}"></div>
     <div class="f"><label>Kaufdatum</label><input id="dt" value="${esc(x?.date)}" placeholder="z. B. 03/2024"></div></div>
     <div class="f"><label>Foto</label><div class="phrow">${photoField('photo', '', x)}</div></div>`;
@@ -422,16 +426,17 @@ function editItem(id) {
     <div class="f"><label>Münze</label><input id="nm" value="${esc(x?.name)}" placeholder="z. B. Wiener Philharmoniker 1 oz"></div>
     <div class="two"><div class="f"><label>Jahr / Land</label><input id="og" value="${esc(x?.origin)}" placeholder="z. B. 2015, Österreich"></div>
     <div class="f"><label>Anzahl</label><input id="ct" inputmode="numeric" value="${x?.count ?? 1}"></div></div>
-    <div class="two"><div class="f"><label>Metall</label><select id="mt"><option value="silver" ${x?.metal !== 'gold' ? 'selected' : ''}>Silber</option><option value="gold" ${x?.metal === 'gold' ? 'selected' : ''}>Gold</option></select></div>
-    <div class="f"><label>Feingehalt</label><select id="pu">${opt(PUR_COIN, x?.purity ?? 999)}</select></div></div>
+    <div class="two"><div class="f"><label>Metall</label><select id="mt">${metalOpt(x?.metal || 'silver')}</select></div>
+    <div class="f"><label>Feingehalt</label><select id="pu">${purOpt(x?.metal || 'silver', x?.purity ?? 999)}</select></div></div>
     <div class="f"><label>Gewicht pro Stück (g) – 1 Unze = 31,1 g</label><input id="wt" inputmode="decimal" value="${x?.weight ?? ''}"></div>
     <div class="two"><div class="f"><label>Kaufpreis pro Stück (€)</label><input id="pd" inputmode="decimal" value="${x?.paid ?? ''}"></div>
     <div class="f"><label>Sammlerwert pro Stück (€)</label><input id="cv" inputmode="decimal" value="${x?.collector ?? ''}" placeholder="optional"></div></div>
     <div class="f"><label>Fotos</label><div class="phrow">${photoField('photo', 'Vorderseite', x)}${photoField('photo2', 'Rückseite', x)}</div></div>`;
-  const title = { gold: x ? 'Schmuckstück bearbeiten' : 'Goldschmuck hinzufügen', watch: x ? 'Uhr bearbeiten' : 'Uhr hinzufügen', coin: x ? 'Münze bearbeiten' : 'Münze hinzufügen' }[type];
+  const title = { gold: x ? 'Schmuckstück bearbeiten' : 'Schmuck hinzufügen', watch: x ? 'Uhr bearbeiten' : 'Uhr hinzufügen', coin: x ? 'Münze bearbeiten' : 'Münze hinzufügen' }[type];
   openM(`<h2>${title}</h2>${f}
    <div class="acts">${x ? '<button class="del" id="dl">Löschen</button>' : ''}<button class="cancel" data-a="close">Abbrechen</button><button class="ok" id="sv">Speichern</button></div>`);
   wirePhotoInputs();
+  if ($('mt') && $('pu')) $('mt').onchange = () => { $('pu').innerHTML = purOpt($('mt').value, null); };
   $('sv').onclick = saveItem;
   if ($('dl')) $('dl').onclick = () => delItem(x);
 }
@@ -440,7 +445,7 @@ async function saveItem() {
   const { type, id } = editing; const x = id ? items.find(i => i.id === id) : null;
   const name = val('nm'); if (!name) return toast('Bitte einen Namen eintragen');
   let o;
-  if (type === 'gold') { const w = num('wt'); if (!w || w <= 0) return toast('Bitte das Gewicht eintragen'); o = { type, name, weight: w, purity: +val('pu'), paid: num('pd'), date: val('dt') }; }
+  if (type === 'gold') { const w = num('wt'); if (!w || w <= 0) return toast('Bitte das Gewicht eintragen'); o = { type, name, metal: val('mt') || 'gold', weight: w, purity: +val('pu'), paid: num('pd'), date: val('dt') }; }
   else if (type === 'watch') { const v = num('vl'); o = { type, name, detail: val('de'), paid: num('pd'), value: v, valueDate: (v != null && v !== x?.value) ? isoToday() : (x?.valueDate || '') }; }
   else { const w = num('wt'); if (!w || w <= 0) return toast('Bitte das Gewicht eintragen'); o = { type, name, origin: val('og'), count: Math.max(1, Math.round(num('ct') || 1)), metal: val('mt'), purity: +val('pu'), weight: w, paid: num('pd'), collector: num('cv') }; }
   const btn = $('sv'); btn.disabled = true; btn.textContent = 'Speichere …';
@@ -506,8 +511,8 @@ function drawCharts() {
     <div class="legend" style="margin:0">${part.map(p => `<span><i style="background:${C[p.k]}"></i>${TYPES[p.k]} · ${eur(p.v)} · ${Math.round(p.v / tv * 100)} %</span>`).join('')}</div>`;
   h2 += '</div>';
   // 3) Verlauf Metallwert
-  const fineG = items.filter(x => x.type === 'gold').reduce((a, x) => a + x.weight * x.purity / 1000, 0) + items.filter(x => x.type === 'coin' && x.metal === 'gold').reduce((a, x) => a + (x.count || 1) * x.weight * x.purity / 1000, 0);
-  const fineS = items.filter(x => x.type === 'coin' && x.metal === 'silver').reduce((a, x) => a + (x.count || 1) * x.weight * x.purity / 1000, 0);
+  const fineG = items.filter(x => x.type === 'gold' && x.metal !== 'silver').reduce((a, x) => a + x.weight * x.purity / 1000, 0) + items.filter(x => x.type === 'coin' && x.metal === 'gold').reduce((a, x) => a + (x.count || 1) * x.weight * x.purity / 1000, 0);
+  const fineS = items.filter(x => x.type === 'coin' && x.metal === 'silver').reduce((a, x) => a + (x.count || 1) * x.weight * x.purity / 1000, 0) + items.filter(x => x.type === 'gold' && x.metal === 'silver').reduce((a, x) => a + x.weight * x.purity / 1000, 0);
   const P = history.filter(h => h.gold).map(h => ({ d: h.d, g: h.gold, s: h.silver || 0, v: fineG * h.gold + fineS * (h.silver || 0) }));
   let h3 = '<div class="card" id="c3"><h3>Metallwert im Verlauf</h3><div class="cs">Gold und Silber deiner Stücke zum jeweiligen Tagespreis</div>';
   if (!(fineG + fineS)) h3 += '<div class="empty">Trag zuerst Goldschmuck oder Münzen ein.</div>';

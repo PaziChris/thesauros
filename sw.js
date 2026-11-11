@@ -1,5 +1,5 @@
 // Thesauros – einfacher Service Worker: App-Dateien offline verfügbar, Daten kommen von Firebase.
-const CACHE = 'thesauros-v6';
+const CACHE = 'thesauros-v7';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon.png', 'logo.svg'];
 
 self.addEventListener('install', e => {
