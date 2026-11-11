@@ -75,7 +75,7 @@ function material(x) {
   return null;
 }
 function value(x) {
-  if (x.type === 'gold') return material(x);
+  if (x.type === 'gold') return material(x) + (x.stoneValue || 0);
   if (x.type === 'watch') return x.value ?? marketFor(x)?.avg ?? x.paid ?? null;
   const m = material(x), c = x.collector != null ? x.collector * (x.count || 1) : null;
   return c != null ? Math.max(c, m) : m;
@@ -349,7 +349,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 11</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 12</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
@@ -383,7 +383,7 @@ setInterval(() => { const c = $('clk'); if (c) c.textContent = 'SYSTEM ONLINE ·
 function tileHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null, mk = marketFor(x);
   let sub;
-  if (x.type === 'gold') sub = `${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g${x.inlayWeight ? ' · inkl. Einlage' : ''}`;
+  if (x.type === 'gold') sub = `${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g${x.inlayWeight && !x.stone ? ' · inkl. Einlage' : ''}${x.stone ? ' · ' + esc(x.stone) + (x.stoneCt ? ' ' + String(x.stoneCt).replace('.', ',') + ' ct' : '') : ''}`;
   else if (x.type === 'watch') sub = esc(x.detail || '');
   else sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g`;
   let pill;
@@ -397,7 +397,10 @@ function tileHTML(x) {
 function rowHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null;
   let sub, extra = '';
-  if (x.type === 'gold') sub = `${x.weight} g · ${x.purity}er${x.date ? ' · ' + esc(x.date) : ''}`;
+  if (x.type === 'gold') {
+    sub = `${x.weight} g · ${x.purity}er${x.date ? ' · ' + esc(x.date) : ''}${x.detail ? ' · ' + esc(x.detail) : ''}`;
+    if (x.stone || x.stoneValue) extra = `<div class="dual">${x.metal === 'silver' ? 'SILBER' : 'GOLD'} ${eur(material(x))} · ${esc((x.stone || 'STEIN').toUpperCase())}${x.stoneCt ? ' ' + String(x.stoneCt).replace('.', ',') + ' CT' : ''} ${eur(x.stoneValue || 0)}</div>`;
+  }
   else if (x.type === 'watch') {
     sub = `${esc(x.detail)}${x.valueDate && x.value != null ? ' · Schätzung vom ' + deDate(x.valueDate) : ''}`;
     const mk = marketFor(x);
@@ -444,6 +447,10 @@ function editItem(id) {
     <div class="two" id="inc" style="${x?.inlayWeight && ![3.4909, 13.9636, 8.0645, 6.4516].includes(x.inlayWeight) ? '' : 'display:none'}">
       <div class="f"><label>Gewicht Einlage (g)</label><input id="iw" inputmode="decimal" value="${x?.inlayWeight ?? ''}"></div>
       <div class="f"><label>Feingehalt Einlage (0 = Stein)</label><input id="ip" inputmode="numeric" value="${x?.inlayPurity ?? ''}"></div></div>
+    <div class="f"><label>Edelstein</label><input id="sn" value="${esc(x?.stone)}" placeholder="z. B. Aquamarin, Bernstein, Onyx"></div>
+    <div class="two"><div class="f"><label>Karat (ct)</label><input id="sc" inputmode="decimal" value="${x?.stoneCt ?? ''}" placeholder="1 ct = 0,2 g"></div>
+    <div class="f"><label>Steinwert (€)</label><input id="sw" inputmode="decimal" value="${x?.stoneValue ?? ''}" placeholder="wird dazugezählt"></div></div>
+    <div class="f"><label>Details</label><input id="de" value="${esc(x?.detail)}" placeholder="Gutachten, Herkunft …"></div>
     <div class="two"><div class="f"><label>Kaufpreis (€)</label><input id="pd" inputmode="decimal" value="${x?.paid ?? ''}"></div>
     <div class="f"><label>Kaufdatum</label><input id="dt" value="${esc(x?.date)}" placeholder="z. B. 03/2024"></div></div>
     <div class="f"><label>Foto</label><div class="phrow">${photoField('photo', '', x)}</div></div>`;
@@ -478,9 +485,9 @@ async function saveItem() {
   const { type, id } = editing; const x = id ? items.find(i => i.id === id) : null;
   const name = val('nm'); if (!name) return toast('Bitte einen Namen eintragen');
   let o;
-  if (type === 'gold') { const w = num('wt'); if (!w || w <= 0) return toast('Bitte das Gewicht eintragen'); o = { type, name, metal: val('mt') || 'gold', weight: w, purity: +val('pu'), paid: num('pd'), date: val('dt') };
+  if (type === 'gold') { const w = num('wt'); if (!w || w <= 0) return toast('Bitte das Gewicht eintragen'); o = { type, name, metal: val('mt') || 'gold', weight: w, purity: +val('pu'), paid: num('pd'), date: val('dt'), stone: val('sn'), stoneCt: num('sc'), stoneValue: num('sw'), detail: val('de') };
     const ip = val('inp');
-    if (ip === 'custom') { o.inlayWeight = num('iw'); o.inlayPurity = num('ip') ?? 0; o.inlayMetal = 'gold'; }
+    if (ip === 'custom') { o.inlayWeight = num('iw'); o.inlayPurity = num('ip') ?? 0; o.inlayMetal = x?.inlayMetal || 'gold'; }
     else if (ip) { const [a, b, c] = ip.split('|'); o.inlayWeight = +a; o.inlayPurity = +b; o.inlayMetal = c; }
     else { o.inlayWeight = null; o.inlayPurity = null; o.inlayMetal = null; }
     if (o.inlayWeight && o.inlayWeight >= w) return toast('Die Einlage ist schwerer als das Gesamtgewicht'); }
