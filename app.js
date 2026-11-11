@@ -57,6 +57,11 @@ function marketFor(x) {
   return market.watches.find(w => { try { return new RegExp(w.match, 'i').test(hay); } catch (e) { return false; } }) || null;
 }
 
+// ---------- Kursverlauf (prices.json, täglich per GitHub Action) ----------
+let priceHist = null, kv = { m: 'gold', r: '1J' };
+fetch('prices.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { priceHist = j; if (tab === 'charts') render(); }).catch(() => {});
+const RANGES = { '1M': 31, '6M': 183, '1J': 366, '5J': 1827, 'Max': 99999 };
+
 // ---------- Werte ----------
 const metalPrice = m => cur(m === 'silver' ? 'silver' : 'gold');
 function material(x) {
@@ -223,6 +228,7 @@ function paintLive() {
   box.innerHTML = marketsHTML();
   const r = $('rf'); if (r) r.onclick = () => fetchLive(true);
   const e = $('ep'); if (e) e.onclick = editPrices;
+  const kb = $('kvb'); if (kb) kb.onclick = () => { tab = 'charts'; render(); setTimeout(() => $('c0')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); };
   const hv = $('heroVal'); if (hv) { const t = totals(); hv.textContent = eur(t.val); }
 }
 function marketsHTML() {
@@ -237,7 +243,7 @@ function marketsHTML() {
   const when = live ? 'Live · ' + new Date(live.at).toLocaleTimeString('de-AT') : settings?.date ? 'Stand ' + deDate(settings.date) + (settings.auto ? '' : ' · manuell') : 'Lade Preise …';
   return `<div class="mk-head"><span class="lbl">Märkte · Spotpreis</span><span class="live"><span class="dot ${live && !liveErr ? '' : 'off'}"></span>${live && !liveErr ? 'LIVE' : liveErr ? 'OFFLINE' : '…'}</span></div>
    <div class="markets">${one('gold', 'GOLD', 'g')}${one('silver', 'SILBER', 's')}</div>
-   <div class="mk-foot"><small>${when}</small><div style="display:flex;gap:8px"><button class="btn" id="rf">Aktualisieren</button><button class="btn" id="ep">Manuell</button></div></div>`;
+   <div class="mk-foot"><small>${when}</small><div style="display:flex;gap:8px"><button class="btn" id="kvb">Verlauf</button><button class="btn" id="rf">Aktualisieren</button><button class="btn" id="ep">Manuell</button></div></div>`;
 }
 
 // ---------- Fotos ----------
@@ -532,7 +538,8 @@ function drawCharts() {
     h4 += s4 + '</svg>';
   }
   h4 += '<div class="tip"></div></div>';
-  box.innerHTML = h1 + h4 + h2 + h3;
+  box.innerHTML = kursCard(W) + h1 + h4 + h2 + h3;
+  wireKurs();
   const c4 = $('c4');
   if (c4) c4.querySelectorAll('.hit4').forEach(el => {
     const r = WM[+el.dataset.i];
@@ -559,5 +566,46 @@ function drawCharts() {
     hz.addEventListener('pointermove', mv); hz.addEventListener('pointerdown', mv);
     hz.addEventListener('pointerleave', () => { hideTip(c3); $('xh').setAttribute('opacity', 0); $('hd').setAttribute('opacity', 0); });
   }
+}
+function kursData() {
+  if (!priceHist?.days?.length) return [];
+  const idx = kv.m === 'gold' ? 1 : 2, cut = new Date(Date.now() - RANGES[kv.r] * 864e5).toISOString().slice(0, 10);
+  const P = priceHist.days.filter(d => d[0] >= cut).map(d => ({ d: d[0], v: d[idx] }));
+  const lv = cur(kv.m); if (lv && live) { const t = isoToday(); if (P.length && P[P.length - 1].d === t) P[P.length - 1].v = lv; else P.push({ d: t, v: lv }); }
+  return P;
+}
+function kursCard(W) {
+  const btn = (k, l, on) => `<button class="btn" data-${k}="${l}" style="${on ? 'background:rgba(79,214,255,.18);color:#fff' : ''}">${l}</button>`;
+  let h = `<div class="card" id="c0"><h3>Kursverlauf ${kv.m === 'gold' ? 'Gold' : 'Silber'} 999</h3><div class="cs">Euro pro Gramm${priceHist?.updated ? ' · Verlauf vom ' + deDate(priceHist.updated.slice(0, 10)) + ', heute live' : ''}</div>
+   <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px"><div style="display:flex;gap:6px">${btn('km', 'Gold', kv.m === 'gold')}${btn('km', 'Silber', kv.m === 'silver')}</div>
+   <div style="display:flex;gap:6px">${Object.keys(RANGES).map(r => btn('kr', r, kv.r === r)).join('')}</div></div>`;
+  const P = kursData();
+  if (P.length < 2) { h += `<div class="empty">${priceHist ? 'Für diesen Zeitraum gibt es noch keine Daten.' : 'Der Kursverlauf wird gerade erstellt und ist in wenigen Minuten da.'}</div><div class="tip"></div></div>`; return h; }
+  const H = 200, pt = 18, pb = 22, col = kv.m === 'gold' ? '#e8b44c' : '#c9d3dd';
+  let mn = Math.min(...P.map(p => p.v)), mx = Math.max(...P.map(p => p.v)); const pad = (mx - mn) * 0.1 || mx * 0.02; mn -= pad; mx += pad;
+  const X = i => 2 + i / (P.length - 1) * (W - 4), Y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  const line = P.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const dec = kv.m === 'gold' ? 2 : 2;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kursverlauf"><defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>`;
+  [0, 0.5, 1].forEach(f => { const yy = pt + f * (H - pt - pb); s += `<line x1="0" x2="${W}" y1="${yy}" y2="${yy}" stroke="rgba(79,214,255,.12)"/>` + txt(W, yy - 4, eur(mx - f * (mx - mn), dec), 'text-anchor="end" font-size="10"'); });
+  s += `<path d="${line} L ${X(P.length - 1)} ${H - pb} L ${X(0)} ${H - pb} Z" fill="url(#kg)"/><path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+  s += `<circle cx="${X(P.length - 1)}" cy="${Y(P[P.length - 1].v)}" r="4" fill="${col}" stroke="#070b11" stroke-width="2"/>`;
+  s += `<line id="kxh" y1="${pt}" y2="${H - pb}" stroke="#8796a6" opacity="0"/><circle id="khd" r="5" fill="${col}" stroke="#070b11" stroke-width="2" opacity="0"/>`;
+  s += txt(0, H - 6, deDate(P[0].d)) + txt(W, H - 6, deDate(P[P.length - 1].d), 'text-anchor="end"') + `<rect id="khz" width="${W}" height="${H}" fill="transparent"/></svg>`;
+  const d = P[P.length - 1].v - P[0].v;
+  h += s + `<div class="cs" style="margin:6px 0 0">Im Zeitraum: <span class="${cls(d)}">${d >= 0 ? '+' : ''}${eur(d, 2)} / g (${pct(d / P[0].v * 100)})</span> · Unze heute ${eur(P[P.length - 1].v * OZ, 0)}</div><div class="tip"></div></div>`;
+  drawCharts._kurs = { P, X, Y };
+  return h;
+}
+function wireKurs() {
+  document.querySelectorAll('[data-km]').forEach(b => b.onclick = () => { kv.m = b.dataset.km === 'Gold' ? 'gold' : 'silver'; drawCharts(); });
+  document.querySelectorAll('[data-kr]').forEach(b => b.onclick = () => { kv.r = b.dataset.kr; drawCharts(); });
+  const hz = $('khz'), c0 = $('c0'); if (!hz) return;
+  const { P, X, Y } = drawCharts._kurs;
+  const mv = ev => { const b = hz.getBoundingClientRect(), x = ev.clientX - b.left; const i = Math.max(0, Math.min(P.length - 1, Math.round((x - 2) / (b.width - 4) * (P.length - 1))));
+    $('kxh').setAttribute('x1', X(i)); $('kxh').setAttribute('x2', X(i)); $('kxh').setAttribute('opacity', 1); $('khd').setAttribute('cx', X(i)); $('khd').setAttribute('cy', Y(P[i].v)); $('khd').setAttribute('opacity', 1);
+    tipAt(c0, ev, `<b>${deDate(P[i].d)}</b><br>${eur(P[i].v, 2)} / g<br><span class="mut">${eur(P[i].v * OZ, 0)} / Unze</span>`); };
+  hz.addEventListener('pointermove', mv); hz.addEventListener('pointerdown', mv);
+  hz.addEventListener('pointerleave', () => { hideTip(c0); $('kxh').setAttribute('opacity', 0); $('khd').setAttribute('opacity', 0); });
 }
 window.addEventListener('resize', () => { if (tab === 'charts' && user) drawCharts(); });
