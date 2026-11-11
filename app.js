@@ -130,7 +130,7 @@ onAuthStateChanged(auth, u => {
   user = u; items = []; settings = null; history = []; itemsReady = false;
   if (!u) { stopLive(); renderLogin(); return; }
   render();
-  unsubs.push(onSnapshot(ucol('items'), { includeMetadataChanges: true }, s => { if (!s.metadata.fromCache) itemsReady = true; items = s.docs.map(d => ({ id: d.id, ...d.data() })); items.sort((a, b) => (a.created || 0) - (b.created || 0)); render(); }, err));
+  unsubs.push(onSnapshot(ucol('items'), { includeMetadataChanges: true }, s => { if (!s.metadata.fromCache) itemsReady = true; items = s.docs.map(d => ({ id: d.id, ...d.data() })); items.sort((a, b) => (a.created || 0) - (b.created || 0)); render(); if (itemsReady) dedupeItems(); }, err));
   unsubs.push(onSnapshot(ucol('history'), s => { history = s.docs.map(d => ({ d: d.id, ...d.data() })).sort((a, b) => a.d < b.d ? -1 : 1); render(); }, err));
   unsubs.push(onSnapshot(uref('meta', 'settings'), { includeMetadataChanges: true }, async s => {
     settings = s.exists() ? s.data() : {};
@@ -370,7 +370,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="pinc">PIN ändern</button><div>App-Version 16</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="pinc">PIN ändern</button><div>App-Version 17</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
@@ -745,3 +745,30 @@ document.addEventListener('visibilitychange', () => {
   else if (hiddenAt && Date.now() - hiddenAt > LOCK_AFTER && settings?.pinHash) { unlocked = false; showLock(); }
   if (!document.hidden && hiddenAt && Date.now() - hiddenAt > 10 * 60000) { checkImport._done = false; checkImport(); }
 });
+
+// ---------- Doppelte Einträge aufräumen (gleicher Typ + gleicher Name) ----------
+async function dedupeItems() {
+  if (dedupeItems._busy || dedupeItems._done) return; dedupeItems._busy = true;
+  try {
+    const groups = {};
+    for (const x of items) { const k = x.type + '|' + (x.name || '').trim().toLowerCase(); (groups[k] = groups[k] || []).push(x); }
+    let n = 0;
+    for (const g of Object.values(groups)) {
+      if (g.length < 2) continue;
+      g.sort((p, q) => (q.created || 0) - (p.created || 0));           // neuester Eintrag = aktuellste Daten von Claude
+      const keep = g[0], carry = {};
+      const withPaid = g.find(x => x.paid != null);
+      if (keep.paid == null && withPaid) { carry.paid = withPaid.paid; if (withPaid.date) carry.date = withPaid.date; }
+      const withVal = g.find(x => x.type === 'watch' && x.value != null);
+      if (keep.type === 'watch' && keep.value == null && withVal) { carry.value = withVal.value; carry.valueDate = withVal.valueDate || ''; }
+      if (Object.keys(carry).length) await updateDoc(uref('items', keep.id), carry);
+      const used = new Set([keep.photo, keep.photo2].filter(Boolean));
+      for (const d of g.slice(1)) {
+        await deleteDoc(uref('items', d.id)); n++;
+        for (const ph of [d.photo, d.photo2]) if (ph && !used.has(ph)) deleteDoc(uref('photos', ph)).catch(() => {});
+      }
+    }
+    dedupeItems._done = true;
+    if (n) toast(n + ' doppelte Einträge entfernt ✓');
+  } catch (e) { console.error(e); } finally { dedupeItems._busy = false; }
+}
