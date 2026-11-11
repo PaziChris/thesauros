@@ -60,7 +60,7 @@ function marketFor(x) {
 
 // ---------- Kursverlauf (prices.json, täglich per GitHub Action) ----------
 let priceHist = null, kv = { m: 'gold', r: '1J' };
-fetch('prices.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { priceHist = j; if (tab === 'charts') render(); }).catch(() => {});
+fetch('prices.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { priceHist = j; if (liveErr && !live && user) fetchLive(); if (tab === 'charts') render(); }).catch(() => {});
 const RANGES = { '1M': 31, '6M': 183, '1J': 366, '5J': 1827, 'Max': 99999 };
 
 // ---------- Werte ----------
@@ -188,23 +188,39 @@ function stopLive() { if (liveTimer) clearInterval(liveTimer); liveTimer = null;
 document.addEventListener('visibilitychange', () => { if (!document.hidden && user && (!live || Date.now() - live.at > LIVE_MS)) fetchLive(); });
 async function fetchLive(manual) {
   if (fetchLive._busy) return; fetchLive._busy = true;
-  try {
-    const j = u => fetch(u, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-    if (!fx || Date.now() - fx.at > 3600000) { const r = await j('https://api.frankfurter.app/latest?from=USD&to=EUR'); fx = { rate: r.rates.EUR, at: Date.now() }; }
-    const [xau, xag] = await Promise.all([j('https://api.gold-api.com/price/XAU'), j('https://api.gold-api.com/price/XAG')]);
-    if (!xau?.price || !xag?.price) throw new Error('Antwort unvollständig');
-    const goldOz = xau.price * fx.rate, silverOz = xag.price * fx.rate;
-    live = { goldOz, silverOz, gold: goldOz / OZ, silver: silverOz / OZ, at: Date.now(), src: xau.updatedAt || null };
-    liveErr = false;
-    paintLive();
-    const today = isoToday();
-    if (settings && (settings.date !== today || !settings.savedAt || Date.now() - settings.savedAt > SAVE_MS)) {
-      await savePrices(+live.gold.toFixed(2), +live.silver.toFixed(3), true);
+  const j = (u, ms = 8000) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+    return fetch(u, { cache: 'no-store', signal: c.signal }).then(r => { clearTimeout(t); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); }); };
+  // Quelle 1: xaus.com (Gold in EUR/g, Silber in USD/Unze, Wechselkurs – ein Aufruf, CORS offen)
+  const src1 = async () => {
+    const r = await j('https://xaus.com/api/v1/spot?currency=EUR&unit=gram');
+    const fxr = +r.fx_rate, g = +r.xau?.price, sUsd = +r.silver_usd_oz;
+    if (!(g > 0) || !(fxr > 0) || !(sUsd > 0)) throw new Error('xaus unvollständig');
+    return { gold: g, silver: sUsd * fxr / OZ, src: 'xaus.com' };
+  };
+  // Quelle 2: gold-api.com + Frankfurter (EZB-Kurs)
+  const src2 = async () => {
+    if (!fx || Date.now() - fx.at > 3600000) {
+      let rate; try { rate = (await j('https://api.frankfurter.dev/v2/rate/USD/EUR')).rate; } catch (e) { rate = (await j('https://api.frankfurter.app/latest?from=USD&to=EUR')).rates.EUR; }
+      fx = { rate, at: Date.now() };
     }
+    const [xau, xag] = await Promise.all([j('https://api.gold-api.com/price/XAU'), j('https://api.gold-api.com/price/XAG')]);
+    if (!xau?.price || !xag?.price) throw new Error('gold-api unvollständig');
+    return { gold: xau.price * fx.rate / OZ, silver: xag.price * fx.rate / OZ, src: 'gold-api.com' };
+  };
+  try {
+    let r; try { r = await src1(); } catch (e) { console.warn(e); r = await src2(); }
+    live = { gold: r.gold, silver: r.silver, goldOz: r.gold * OZ, silverOz: r.silver * OZ, at: Date.now(), src: r.src };
+    liveErr = false; paintLive();
+    const today = isoToday();
+    if (settings && (settings.date !== today || !settings.savedAt || Date.now() - settings.savedAt > SAVE_MS)) await savePrices(+live.gold.toFixed(2), +live.silver.toFixed(3), true);
     if (manual) toast('Preise aktualisiert');
   } catch (e) {
-    console.warn('Preis-Abruf fehlgeschlagen', e); liveErr = true; paintLive();
-    if (manual) toast('Live-Preise nicht erreichbar – bitte manuell eintragen');
+    console.warn('Live-Preise nicht erreichbar', e); liveErr = true;
+    // Rückfall: letzter Tagesschluss aus dem Kursverlauf
+    const last = priceHist?.days?.[priceHist.days.length - 1];
+    if (last && !live) live = { gold: last[1], silver: last[2], goldOz: last[1] * OZ, silverOz: last[2] * OZ, at: Date.parse(last[0] + 'T22:00:00'), src: 'Tagesschluss', close: last[0] };
+    paintLive();
+    if (manual) toast(last ? 'Live gerade nicht erreichbar – zeige letzten Tagesschluss' : 'Preise nicht erreichbar');
   } finally { fetchLive._busy = false; }
 }
 async function savePrices(gold, silver, auto) {
@@ -241,8 +257,8 @@ function marketsHTML() {
       <div class="oz">${g ? eur(g * OZ, 0) : '–'} <small>/ Unze</small></div>
       <div class="ch ${ch == null ? 'mut' : cls(ch)}">${ch == null ? 'Verlauf startet heute' : (ch >= 0 ? '▲ ' : '▼ ') + pct(ch) + ' ' + since}</div></div>`;
   };
-  const when = live ? 'Live · ' + new Date(live.at).toLocaleTimeString('de-AT') : settings?.date ? 'Stand ' + deDate(settings.date) + (settings.auto ? '' : ' · manuell') : 'Lade Preise …';
-  return `<div class="mk-head"><span class="lbl">Märkte · Spotpreis</span><span class="live"><span class="dot ${live && !liveErr ? '' : 'off'}"></span>${live && !liveErr ? 'LIVE' : liveErr ? 'OFFLINE' : '…'}</span></div>
+  const when = live?.close ? 'Tagesschluss ' + deDate(live.close) : live ? 'Live · ' + new Date(live.at).toLocaleTimeString('de-AT') + ' · ' + live.src : settings?.date ? 'Stand ' + deDate(settings.date) + (settings.auto ? '' : ' · manuell') : 'Lade Preise …';
+  return `<div class="mk-head"><span class="lbl">Märkte · Spotpreis</span><span class="live"><span class="dot ${live && !liveErr ? '' : 'off'}"></span>${live && !liveErr ? 'LIVE' : live?.close ? 'SCHLUSSKURS' : liveErr ? 'OFFLINE' : '…'}</span></div>
    <div class="markets">${one('gold', 'GOLD', 'g')}${one('silver', 'SILBER', 's')}</div>
    <div class="mk-foot"><small>${when}</small><div style="display:flex;gap:8px"><button class="btn" id="kvb">Verlauf</button><button class="btn" id="rf">Aktualisieren</button><button class="btn" id="ep">Manuell</button></div></div>`;
 }
