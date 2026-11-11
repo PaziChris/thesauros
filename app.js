@@ -27,8 +27,8 @@ let pend = {}, rm = {};          // neue Fotos / zu entfernende Fotos im offenen
 let editing = null;              // {type, id}
 
 const OZ = 31.1034768;
-const PUR = { gold: [333, 375, 585, 750, 900, 916, 986, 999], silver: [500, 625, 640, 720, 800, 835, 900, 925, 935, 958, 999] };
-const PUR_LABEL = { 333: '333 · 8 Kt', 375: '375 · 9 Kt', 585: '585 · 14 Kt', 750: '750 · 18 Kt', 900: '900', 916: '916 · 22 Kt', 986: '986 · Dukaten', 999: '999 · Fein', 800: '800', 835: '835', 925: '925 · Sterling', 935: '935', 958: '958 · Britannia' };
+const PUR = { gold: [333, 375, 585, 750, 833, 875, 900, 916, 986, 999], silver: [500, 625, 640, 720, 800, 835, 900, 925, 935, 958, 999] };
+const PUR_LABEL = { 333: '333 · 8 Kt', 375: '375 · 9 Kt', 585: '585 · 14 Kt', 750: '750 · 18 Kt', 833: '833 · 20 Kt', 875: '875 · 21 Kt', 900: '900', 916: '916 · 22 Kt', 986: '986 · Dukaten', 999: '999 · Fein', 800: '800', 835: '835', 925: '925 · Sterling', 935: '935', 958: '958 · Britannia' };
 const PUR_COIN = [999, 986, 925, 916, 900, 835, 800, 750, 720, 640, 625, 585, 500];
 const TYPES = { gold: 'Schmuck', watch: 'Uhren', coin: 'Münzen' };
 const C = { gold: '#ffb84a', watch: '#5ea8ff', coin: '#3ee0a6', paid: '#5ea8ff', val: '#ffb84a' };
