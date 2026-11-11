@@ -124,34 +124,28 @@
     },
     {
       "match": "luch|sowjet|bogorod",
-      "label": "Luch Quarz (UdSSR) mit Ikonen-Zifferblatt „Bogoroditsa“",
-      "avg": 80,
-      "min": 67,
-      "max": 122,
+      "label": "Luch Quarz L2356 (UdSSR) mit Ikonen-Zifferblatt „Bogoroditsa“ (Muttergottes mit Kind)",
+      "avg": 60,
+      "min": 43,
+      "max": 70,
       "points": [
         {
-          "kind": "Angebot (Luch Quarz, Kal. 2356)",
+          "kind": "Angebot – genau dieses Modell (Muttergottes & Kind)",
+          "eur": 43,
+          "src": "eBay, US $49,99",
+          "url": "https://www.ebay.com/b/Luch-Watches/31387/bn_3006737"
+        },
+        {
+          "kind": "Angebot Luch Quarz L2356 (Standard-Zifferblatt)",
           "eur": 67,
           "src": "eBay, $76,89",
           "url": "https://www.ebay.com.au/itm/156987997704"
         },
         {
-          "kind": "Angebot Händler (Luch Quarz)",
+          "kind": "Angebot Händler Luch Quarz",
           "eur": 70,
           "src": "Soviet Watch Store, $79,95",
           "url": "https://sovietwatchstore.com/index.php/product/soviet-luch-watch-with-quartz-movement/"
-        },
-        {
-          "kind": "Angebot Händler (Luch Quarz, Motiv-Zifferblatt)",
-          "eur": 78,
-          "src": "Soviet Watch Store, $89,95",
-          "url": "https://sovietwatchstore.com/product/luch-quartz-watch-with-moving-sun-moon-across-the-dial/"
-        },
-        {
-          "kind": "Angebot Händler (Luch Quarz, Sonder-Zifferblatt)",
-          "eur": 122,
-          "src": "Soviet Watch Store, $139,95",
-          "url": "https://sovietwatchstore.com/index.php/product/vintage-soviet-luch-automatic-quartz-watch-1937-soviet-transpolar-flight/"
         }
       ]
     },
