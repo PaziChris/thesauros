@@ -19,7 +19,7 @@ try { db = initializeFirestore(fb, { localCache: persistentLocalCache() }); }
 catch (e) { db = initializeFirestore(fb, {}); }
 
 // ---------- Zustand ----------
-let user = null, unsubs = [];
+let user = null, unsubs = [], itemsReady = false;
 let items = [], settings = null, history = [];
 let tab = 'gold';
 const photoCache = new Map();
@@ -104,16 +104,17 @@ getRedirectResult(auth).catch(e => renderLogin('Anmeldung fehlgeschlagen: ' + e.
 
 onAuthStateChanged(auth, u => {
   unsubs.forEach(f => f()); unsubs = [];
-  user = u; items = []; settings = null; history = [];
+  user = u; items = []; settings = null; history = []; itemsReady = false;
   if (!u) { stopLive(); renderLogin(); return; }
   render();
-  unsubs.push(onSnapshot(ucol('items'), s => { items = s.docs.map(d => ({ id: d.id, ...d.data() })); items.sort((a, b) => (a.created || 0) - (b.created || 0)); render(); }, err));
+  unsubs.push(onSnapshot(ucol('items'), { includeMetadataChanges: true }, s => { if (!s.metadata.fromCache) itemsReady = true; items = s.docs.map(d => ({ id: d.id, ...d.data() })); items.sort((a, b) => (a.created || 0) - (b.created || 0)); render(); }, err));
   unsubs.push(onSnapshot(ucol('history'), s => { history = s.docs.map(d => ({ d: d.id, ...d.data() })).sort((a, b) => a.d < b.d ? -1 : 1); render(); }, err));
   unsubs.push(onSnapshot(uref('meta', 'settings'), { includeMetadataChanges: true }, async s => {
     settings = s.exists() ? s.data() : {};
     render();
     if (s.metadata.fromCache) return;          // erst entscheiden, wenn der Server geantwortet hat
     if (!settings.seeded) await seed();
+    checkImport();
   }, err));
   startLive();
 });
@@ -132,6 +133,43 @@ async function seed() {
   w.forEach(([name, detail, p], i) => b.set(doc(ucol('items')), { type: 'watch', name, detail, paid: p, value: null, valueDate: '', created: t + i }));
   b.set(uref('meta', 'settings'), { seeded: true }, { merge: true });
   await b.commit().catch(err);
+}
+
+// ---------- Import vorbereiteter Daten (verschlüsselt, import.json) ----------
+async function checkImport() {
+  if (checkImport._done) return; checkImport._done = true;
+  let pkg; try { const r = await fetch('import.json', { cache: 'no-store' }); if (!r.ok) return; pkg = await r.json(); } catch (e) { return; }
+  if (!pkg?.id || (settings?.imports || []).includes(pkg.id)) return;
+  openM(`<h2>Neue Daten bereit</h2>
+   <div class="note" style="margin:0 0 12px">Claude hat <b>${esc(pkg.title || 'Daten')}</b> für dich vorbereitet. Gib das Passwort aus dem Chat ein, um sie in deine Schatzkammer zu übernehmen.</div>
+   <div class="f"><label>Passwort</label><input id="ipw" autocomplete="off" autocapitalize="characters" placeholder="z. B. A1B2C3"></div>
+   <div class="acts"><button class="cancel" data-a="close">Später</button><button class="ok" id="ido">Übernehmen</button></div>`);
+  $('ido').onclick = async () => {
+    const btn = $('ido'); btn.disabled = true; btn.textContent = 'Übernehme …';
+    try { const data = await decryptPkg(pkg, val('ipw').toUpperCase()); await applyImport(data); closeM(); toast('Übernommen ✓'); }
+    catch (e) { console.error(e); btn.disabled = false; btn.textContent = 'Übernehmen'; toast(e.name === 'OperationError' ? 'Falsches Passwort' : 'Fehler: ' + (e.code || e.message)); }
+  };
+}
+async function decryptPkg(pkg, pw) {
+  const b = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: b(pkg.salt), iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b(pkg.iv) }, key, b(pkg.data));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+async function applyImport(data) {
+  for (let i = 0; i < 50 && !itemsReady; i++) await new Promise(r => setTimeout(r, 200));
+  if (!itemsReady) throw new Error('Daten noch nicht geladen – bitte nochmal versuchen');
+  let t = Date.now();
+  for (const w of data.items || []) {
+    const re = new RegExp(w.match, 'i');
+    const ex = items.find(x => x.type === 'watch' && re.test((x.name || '') + ' ' + (x.detail || '')));
+    let photo = ex?.photo || null;
+    if (w.photoData) { const r = await addDoc(ucol('photos'), { data: w.photoData, created: Date.now() }); photoCache.set(r.id, Promise.resolve(w.photoData)); if (ex?.photo) deleteDoc(uref('photos', ex.photo)).catch(() => {}); photo = r.id; }
+    if (ex) await updateDoc(uref('items', ex.id), { ...w.set, photo });
+    else await addDoc(ucol('items'), { type: 'watch', paid: null, value: null, valueDate: '', ...w.set, photo, created: t++ });
+  }
+  await setDoc(uref('meta', 'settings'), { imports: [...(settings?.imports || []), data.id] }, { merge: true });
 }
 
 // ---------- Live-Preise ----------
