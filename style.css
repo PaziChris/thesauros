@@ -219,3 +219,18 @@ body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opac
 .empty{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
 .login h1{font-size:30px}
 .mk-foot{flex-wrap:wrap}.mk-foot small{flex:1 1 100%}
+/* PIN-Sperre */
+#lock{position:fixed;inset:0;z-index:9999;background:radial-gradient(120% 80% at 50% 20%,#1c2a3f 0%,#0a0f18 70%);display:flex;align-items:center;justify-content:center;padding:24px}
+#lock .lk{width:100%;max-width:320px;text-align:center;color:#e9eef7}
+#lock .lk img{width:72px;height:72px;margin-bottom:10px;filter:drop-shadow(0 0 18px rgba(255,184,74,.35))}
+#lock .lt{font-family:Michroma,sans-serif;letter-spacing:.12em;font-size:14px;text-transform:uppercase;margin-bottom:18px}
+#lock .dots{display:flex;gap:16px;justify-content:center;margin-bottom:10px}
+#lock .dots i{width:14px;height:14px;border-radius:50%;border:1.5px solid #ffb84a;display:block}
+#lock .dots i.on{background:#ffb84a;box-shadow:0 0 10px rgba(255,184,74,.6)}
+#lock .lm{min-height:20px;color:#ff7a7a;font-size:13px;margin-bottom:10px}
+#lock .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:0 auto 18px;max-width:270px}
+#lock .pad button{height:68px;border-radius:50%;width:68px;margin:auto;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#fff;font-size:26px;font-family:Rajdhani,sans-serif}
+#lock .pad button:active{background:rgba(255,184,74,.25)}
+#lock .lf{background:none;border:0;color:#9fb3cf;font-size:13px;text-decoration:underline}
+#lock .shake{animation:shk .35s}
+@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}

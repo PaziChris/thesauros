@@ -113,9 +113,10 @@ function renderLogin(msg) {
   $('gl').onclick = login;
 }
 async function login() {
+  try { sessionStorage.setItem('fresh', '1'); } catch (e) {}
   const prov = new GoogleAuthProvider();
   prov.setCustomParameters({ prompt: 'select_account' });
-  try { await signInWithPopup(auth, prov); }
+  try { await signInWithPopup(auth, prov); unlocked = true; if (settings?.pinHash) document.getElementById('lock')?.remove(); }
   catch (e) {
     if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(e.code)) {
       try { await signInWithRedirect(auth, prov); } catch (e2) { renderLogin('Anmeldung fehlgeschlagen: ' + e2.code); }
@@ -162,13 +163,17 @@ async function checkImport(manual) {
   if (checkImport._done) return; checkImport._done = true;
   let pkg; try { const r = await fetch('import.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { if (manual) toast('Keine neuen Daten'); return; } pkg = await r.json(); } catch (e) { if (manual) toast('Keine neuen Daten'); return; }
   if (!pkg?.id || (settings?.imports || []).includes(pkg.id)) { if (manual) toast('Keine neuen Daten – schon übernommen'); return; }
+  if (settings?.importKey) {
+    try { const data = await decryptPkg(pkg, settings.importKey); await applyImport(data); toast('Neue Daten übernommen ✓'); return; }
+    catch (e) { console.error(e); }
+  }
   openM(`<h2>Neue Daten bereit</h2>
    <div class="note" style="margin:0 0 12px">Claude hat <b>${esc(pkg.title || 'Daten')}</b> für dich vorbereitet. Gib das Passwort aus dem Chat ein, um sie in deine Schatzkammer zu übernehmen.</div>
    <div class="f"><label>Passwort</label><input id="ipw" autocomplete="off" autocapitalize="characters" placeholder="z. B. A1B2C3"></div>
    <div class="acts"><button class="cancel" data-a="close">Später</button><button class="ok" id="ido">Übernehmen</button></div>`);
   $('ido').onclick = async () => {
     const btn = $('ido'); btn.disabled = true; btn.textContent = 'Übernehme …';
-    try { const data = await decryptPkg(pkg, val('ipw').replace(/\s+/g, '').toUpperCase()); await applyImport(data); closeM(); toast('Übernommen ✓'); }
+    try { const k = val('ipw').replace(/\s+/g, '').toUpperCase(); const data = await decryptPkg(pkg, k); await applyImport(data); await setDoc(uref('meta', 'settings'), { importKey: k }, { merge: true }); closeM(); toast('Übernommen ✓ – ab jetzt automatisch'); }
     catch (e) { console.error(e); btn.disabled = false; btn.textContent = 'Übernehmen'; toast(e.name === 'OperationError' ? 'Falsches Passwort' : 'Fehler: ' + (e.code || e.message)); }
   };
 }
@@ -365,7 +370,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 15</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="pinc">PIN ändern</button><div>App-Version 16</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
@@ -386,6 +391,8 @@ function render() {
   $('av').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('open'); };
   $('lo').onclick = () => signOut(auth);
   $('imp').onclick = () => { checkImport._done = false; checkImport(true); };
+  $('pinc').onclick = () => showLock(true);
+  showLock();
   paintLive();
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.querySelectorAll('[data-item]').forEach(el => el.onclick = () => editItem(el.dataset.item));
@@ -689,3 +696,52 @@ function wireKurs() {
   hz.addEventListener('pointerleave', () => { hideTip(c0); $('kxh').setAttribute('opacity', 0); $('khd').setAttribute('opacity', 0); });
 }
 window.addEventListener('resize', () => { if (tab === 'charts' && user) drawCharts(); });
+
+// ---------- PIN-Sperre beim Öffnen ----------
+let unlocked = false, hiddenAt = 0;
+try { if (sessionStorage.getItem('fresh')) { unlocked = true; sessionStorage.removeItem('fresh'); } } catch (e) {}
+const LOCK_AFTER = 2 * 60000;
+async function pinHash(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('thesauros:' + user.uid + ':' + pin));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function showLock(change) {
+  if (!user || !settings || document.getElementById('lock')) return;
+  if (!change && unlocked && settings.pinHash) return;
+  if (!change && unlocked && !settings.pinHash && showLock._asked) return;
+  showLock._asked = true;
+  let mode = (change || !settings.pinHash) ? 'set' : 'enter', first = '', pin = '';
+  const el = document.createElement('div'); el.id = 'lock';
+  el.innerHTML = `<div class="lk"><img src="logo.svg" alt=""><div class="lt" id="lkt"></div><div class="dots" id="lkd"></div><div class="lm" id="lkm"></div>
+   <div class="pad">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<span></span>' : `<button data-k="${k}">${k}</button>`).join('')}</div>
+   <button class="lf" id="lkf"></button></div>`;
+  document.body.appendChild(el);
+  const T = $('lkt'), D = $('lkd'), M = $('lkm'), F = $('lkf');
+  const paint = () => {
+    T.textContent = mode === 'enter' ? 'PIN eingeben' : first ? 'PIN wiederholen' : (settings.pinHash ? 'Neue PIN festlegen' : 'PIN für die App festlegen');
+    D.innerHTML = [0,1,2,3].map(i => `<i class="${i < pin.length ? 'on' : ''}"></i>`).join('');
+    F.textContent = mode === 'enter' ? 'PIN vergessen? Neu mit Google anmelden' : (settings.pinHash || change ? 'Abbrechen' : 'Ohne PIN weiter');
+  };
+  const done = () => { unlocked = true; el.remove(); };
+  const go = async () => {
+    if (mode === 'enter') {
+      if (await pinHash(pin) === settings.pinHash) return done();
+      M.textContent = 'Falsche PIN'; el.querySelector('.lk').classList.add('shake'); setTimeout(() => el.querySelector('.lk')?.classList.remove('shake'), 400);
+    } else if (!first) { first = pin; M.textContent = ''; }
+    else if (first === pin) { await setDoc(uref('meta', 'settings'), { pinHash: await pinHash(pin) }, { merge: true }); toast('PIN gespeichert ✓'); return done(); }
+    else { first = ''; M.textContent = 'Stimmt nicht überein – nochmal'; }
+    pin = ''; paint();
+  };
+  el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => {
+    const k = b.dataset.k;
+    if (k === '⌫') pin = pin.slice(0, -1); else if (pin.length < 4) pin += k;
+    paint(); if (pin.length === 4) setTimeout(go, 120);
+  });
+  F.onclick = () => { if (mode === 'enter') { el.remove(); signOut(auth); } else done(); };
+  paint();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) hiddenAt = Date.now();
+  else if (hiddenAt && Date.now() - hiddenAt > LOCK_AFTER && settings?.pinHash) { unlocked = false; showLock(); }
+  if (!document.hidden && hiddenAt && Date.now() - hiddenAt > 10 * 60000) { checkImport._done = false; checkImport(); }
+});
