@@ -81,8 +81,20 @@ function value(x) {
   return c != null ? Math.max(c, m) : m;
 }
 function paid(x) {
-  if (x.type === 'coin') return x.paid != null ? x.paid * (x.count || 1) : null;
-  return x.paid ?? null;
+  if (x.paid != null) return x.type === 'coin' ? x.paid * (x.count || 1) : x.paid;
+  return x.baseVal ?? null;   // ohne Kaufpreis: Startwert vom ersten Tag zählt als Einstand
+}
+const isBase = x => x.paid == null && x.baseVal != null;
+const baseTxt = x => isBase(x) ? ' seit ' + deDate(x.baseDate).slice(0, 6) : '';
+let baseBusy = new Set();
+function ensureBaselines() {
+  if (!itemsReady || !live || !user) return;
+  for (const x of items) {
+    if (x.paid != null || x.baseVal != null || baseBusy.has(x.id)) continue;
+    const v = value(x); if (v == null || !isFinite(v) || v <= 0) continue;
+    baseBusy.add(x.id);
+    updateDoc(uref('items', x.id), { baseVal: Math.round(v * 100) / 100, baseDate: isoToday() }).catch(e => { console.error(e); baseBusy.delete(x.id); });
+  }
 }
 function totals(list = items) {
   let p = 0, v = 0;
@@ -336,6 +348,7 @@ function ringSVG(parts, total) {
    ${segs}</svg>`;
 }
 function render() {
+  ensureBaselines();
   if (!user) return;
   const t = totals();
   const list = items.filter(x => x.type === tab);
@@ -349,14 +362,14 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 13</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><div>App-Version 14</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
      <span class="gain ${cls(t.diff)}">${sgn(t.diff)}${t.paid ? ' · ' + pct(t.diff / t.paid * 100) : ''}</span>
      <span class="lbl" style="margin-top:6px">${items.length} Objekte</span></div></div>
    <div class="legend3">${parts.map(p => `<span><i style="background:${C[p.k]}"></i>${TYPES[p.k]}</span>`).join('')}</div>
-   <div class="stats"><div class="stat"><span class="lbl">Bezahlt</span><b>${eur(t.paid)}</b></div>
+   <div class="stats"><div class="stat"><span class="lbl">Einstand</span><b>${eur(t.paid)}</b></div>
     <div class="stat"><span class="lbl">Gewinn</span><b class="${cls(t.diff)}">${sgn(t.diff)}</b></div>
     <div class="stat"><span class="lbl">Rendite</span><b class="${cls(t.diff)}">${t.paid ? pct(t.diff / t.paid * 100) : '–'}</b></div></div>
   </div>
@@ -387,7 +400,7 @@ function tileHTML(x) {
   else if (x.type === 'watch') sub = esc(x.detail || '');
   else sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g`;
   let pill;
-  if (d != null && p) pill = `<span class="pill ${cls(d)}">${d >= 0 ? '▲' : '▼'} ${sgn(d)} · ${pct(d / p * 100)}</span>`;
+  if (d != null && p) pill = `<span class="pill ${cls(d)}">${d >= 0 ? '▲' : '▼'} ${sgn(d)} · ${pct(d / p * 100)}${baseTxt(x)}</span>`;
   else pill = `<span class="pill">${x.type === 'watch' && x.paid == null ? 'Kaufpreis eintragen' : 'Kaufpreis fehlt'}</span>`;
   const tag = { gold: x.metal === 'silver' ? 'SILBER' : 'GOLD', watch: 'UHR', coin: x.metal === 'silver' ? 'SILBER' : 'GOLDMÜNZE' }[x.type];
   const media = x.photo ? `<img class="ph" data-photo="${x.photo}" alt="">` : `<div class="noph" style="--acc:${C[x.type]}">${esc((x.name || '?').trim()[0] || '?')}</div>`;
@@ -411,7 +424,7 @@ function rowHTML(x) {
     extra = `<div class="dual">MATERIAL ${eur(material(x))}${x.collector != null ? ' · SAMMLER ' + eur(x.collector * (x.count || 1)) : ''}</div>`;
   }
   let st;
-  if (d != null && p) st = `<span class="${cls(d)}">${sgn(d)} · ${pct(d / p * 100)}</span>`;
+  if (d != null && p) st = `<span class="${cls(d)}">${sgn(d)} · ${pct(d / p * 100)}${baseTxt(x)}</span>`;
   else if (x.type === 'watch' && x.paid == null) st = '<span class="mut">Preis eintragen</span>';
   else if (x.type === 'watch' && x.value == null && !marketFor(x)) st = '<span class="mut">Schätzwert fehlt</span>';
   else st = '<span class="mut">Kaufpreis fehlt</span>';
@@ -533,7 +546,7 @@ function drawCharts() {
   let h1 = '<div class="card" id="c1"><h3>Kaufpreis vs. Wert heute</h3><div class="cs">Pro Stück, in Euro</div>';
   if (!R.length) h1 += '<div class="empty">Noch keine Stücke mit Preis.</div>';
   else {
-    h1 += `<div class="legend"><span><i style="background:${C.paid}"></i>Bezahlt</span><span><i style="background:${C.val}"></i>Wert heute</span></div>`;
+    h1 += `<div class="legend"><span><i style="background:${C.paid}"></i>Kaufpreis / Startwert</span><span><i style="background:${C.val}"></i>Wert heute</span></div>`;
     const max = Math.max(...R.map(r => Math.max(r.p || 0, r.v || 0)), 1), rowH = 42, H = R.length * rowH;
     const sc = v => Math.max(4, v / max * (W - 64));
     let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kaufpreis und Wert pro Stück">`;
@@ -614,7 +627,7 @@ function drawCharts() {
   const c1 = $('c1');
   c1.querySelectorAll('.hit').forEach(el => {
     const r = R[+el.dataset.i];
-    const show = ev => { const d = r.p != null && r.v != null ? r.v - r.p : null; tipAt(c1, ev, `<b>${esc(r.x.name)}</b><br>Bezahlt: ${eur(r.p)}<br>Wert: ${eur(r.v)}${d != null ? `<br><span class="${cls(d)}">${sgn(d)}</span>` : ''}`); };
+    const show = ev => { const d = r.p != null && r.v != null ? r.v - r.p : null; tipAt(c1, ev, `<b>${esc(r.x.name)}</b><br>${r.x.paid != null ? "Bezahlt" : "Startwert"}: ${eur(r.p)}<br>Wert: ${eur(r.v)}${d != null ? `<br><span class="${cls(d)}">${sgn(d)}</span>` : ''}`); };
     el.addEventListener('pointermove', show); el.addEventListener('pointerdown', show); el.addEventListener('pointerleave', () => hideTip(c1));
   });
   const hz = $('hz'), c3 = $('c3');
