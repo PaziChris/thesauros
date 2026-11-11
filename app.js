@@ -30,7 +30,7 @@ const OZ = 31.1034768;
 const PUR_JEWEL = [333, 375, 585, 750, 916, 999];
 const PUR_COIN = [999, 986, 925, 916, 900, 835, 800, 750, 720, 640, 625, 585, 500];
 const TYPES = { gold: 'Gold', watch: 'Uhren', coin: 'Münzen' };
-const C = { gold: '#c98500', watch: '#3987e5', coin: '#199e70', paid: '#3987e5', val: '#c98500' };
+const C = { gold: '#ffb84a', watch: '#5ea8ff', coin: '#3ee0a6', paid: '#5ea8ff', val: '#ffb84a' };
 const TAB_DEFAULT = 'gold';
 
 // ---------- Hilfen ----------
@@ -322,7 +322,7 @@ function render() {
   let body;
   if (tab === 'charts') body = '<div id="charts"></div>';
   else if (!list.length) body = `<div class="empty">${{ gold: 'Noch kein Goldschmuck erfasst.', watch: 'Noch keine Uhren erfasst.', coin: 'Noch keine Münzen erfasst.' }[tab]}<br>Tippe unten auf „+ Hinzufügen“.</div>`;
-  else body = list.map(rowHTML).join('');
+  else body = '<div class="grid">' + list.map(tileHTML).join('') + '</div>';
   const scrollY = window.scrollY;
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
@@ -357,6 +357,20 @@ function render() {
 document.addEventListener('click', () => $('menu')?.classList.remove('open'));
 setInterval(() => { const c = $('clk'); if (c) c.textContent = 'SYSTEM ONLINE · ' + new Date().toLocaleTimeString('de-AT'); }, 1000);
 
+function tileHTML(x) {
+  const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null, mk = marketFor(x);
+  let sub;
+  if (x.type === 'gold') sub = `${x.weight} g · ${x.purity}er`;
+  else if (x.type === 'watch') sub = esc(x.detail || '');
+  else sub = `${(x.count || 1) > 1 ? x.count + '× · ' : ''}${x.metal === 'silver' ? 'Silber' : 'Gold'} ${x.purity} · ${x.weight} g`;
+  let pill;
+  if (d != null && p) pill = `<span class="pill ${cls(d)}">${d >= 0 ? '▲' : '▼'} ${sgn(d)} · ${pct(d / p * 100)}</span>`;
+  else pill = `<span class="pill">${x.type === 'watch' && x.paid == null ? 'Kaufpreis eintragen' : 'Kaufpreis fehlt'}</span>`;
+  const tag = { gold: 'GOLD', watch: 'UHR', coin: x.metal === 'silver' ? 'SILBER' : 'GOLDMÜNZE' }[x.type];
+  const media = x.photo ? `<img class="ph" data-photo="${x.photo}" alt="">` : `<div class="noph" style="--acc:${C[x.type]}">${esc((x.name || '?').trim()[0] || '?')}</div>`;
+  return `<div class="tile" data-item="${x.id}">${media}<span class="tag">${tag}</span>${mk && x.value == null ? '<span class="mkt">MARKT</span>' : ''}
+   <div class="bd"><div class="n">${esc(x.name)}</div><div class="d">${sub}</div><div class="v">${eur(v)}</div>${pill}</div></div>`;
+}
 function rowHTML(x) {
   const v = value(x), p = paid(x), d = (v != null && p != null) ? v - p : null;
   let sub, extra = '';

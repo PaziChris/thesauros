@@ -152,3 +152,70 @@ button{font-family:inherit}
 
 @media (prefers-reduced-motion:reduce){.ring .spin,.ring .spin2,.dot,.login img{animation:none}}
 @media (max-width:380px){.ring{width:220px;height:220px}.ring .val{font-size:34px}.mk .pg{font-size:22px}}
+
+/* ================= V2: heller, lebendiger ================= */
+:root{--txt:#f6f9ff;--mut:#a7b6ca;--dim:#7a8ba0;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.22);
+  --glass:rgba(255,255,255,.065);--glass2:rgba(255,255,255,.11);--cyan:#5ee7ff;--cyan2:#c9f6ff;--vio:#9b7bff;--gold:#ffc65c;--gold2:#ffe7a8;
+  --goldg:linear-gradient(120deg,#fff4d0 0%,#ffd06a 35%,#ff9f43 70%,#ffcf73 100%)}
+html{background:#0a0d1c}
+body{background:#0a0d1c}
+body::before{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;opacity:1;-webkit-mask-image:none;mask-image:none;
+  background:
+   radial-gradient(40% 35% at 15% 10%,rgba(94,231,255,.38),transparent 70%),
+   radial-gradient(38% 32% at 90% 18%,rgba(155,123,255,.40),transparent 70%),
+   radial-gradient(45% 40% at 70% 95%,rgba(255,170,70,.30),transparent 70%),
+   radial-gradient(35% 30% at 5% 85%,rgba(60,120,255,.30),transparent 70%);
+  filter:blur(20px);animation:aurora 24s ease-in-out infinite alternate}
+@keyframes aurora{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(-3%,2%) rotate(4deg)}100%{transform:translate(2%,-2%) rotate(-3deg)}}
+body::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:40px 40px;
+  -webkit-mask-image:linear-gradient(#000,transparent 55%);mask-image:linear-gradient(#000,transparent 55%)}
+.panel,.card,.tabs,.item{background:linear-gradient(145deg,rgba(255,255,255,.10),rgba(255,255,255,.035));border:1px solid var(--line2);box-shadow:0 10px 40px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
+.panel{border-radius:26px}
+.panel.hud::before,.panel.hud::after{border-color:var(--cyan);opacity:.8;border-radius:0}
+.panel.hud::before{border-top-left-radius:26px}.panel.hud::after{border-bottom-right-radius:26px}
+.brand h1{font-size:18px}
+.status{color:var(--cyan)}
+.hero{background:linear-gradient(160deg,rgba(255,198,92,.16),rgba(155,123,255,.10) 55%,rgba(94,231,255,.10));}
+.ring .val{font-size:44px;filter:drop-shadow(0 0 22px rgba(255,190,90,.45))}
+.ring .gain{font-size:17px}
+.stat{background:rgba(255,255,255,.07);border:1px solid var(--line2);border-radius:16px}
+.stat b{font-size:20px}
+.mk{border-radius:18px;border:1px solid var(--line2)}
+.mk.g{background:linear-gradient(150deg,rgba(255,198,92,.30),rgba(255,140,60,.08) 70%)}
+.mk.s{background:linear-gradient(150deg,rgba(220,235,255,.25),rgba(120,150,200,.06) 70%)}
+.mk .pg{font-size:28px}
+.mk.g .pg{color:#ffe08a;text-shadow:0 0 18px rgba(255,190,80,.35)}
+.btn{background:rgba(255,255,255,.10);color:#fff;border:1px solid var(--line2);border-radius:999px;padding:7px 13px}
+.btn:active{background:rgba(255,255,255,.2)}
+.tabs{border-radius:999px;padding:5px}
+.tabs button{border-radius:999px;color:var(--mut)}
+.tabs button.on{color:#14100a;background:var(--goldg);box-shadow:0 4px 18px rgba(255,170,70,.35)}
+.tabs button.on::after{display:none}
+.lbl{color:#b9c6d8}
+/* Karten-Raster mit Fotos */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media (min-width:620px){.grid{grid-template-columns:repeat(3,1fr)}}
+.tile{position:relative;border-radius:22px;overflow:hidden;cursor:pointer;border:1px solid var(--line2);
+  background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.03));box-shadow:0 12px 34px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.14);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:transform .15s,box-shadow .2s}
+.tile:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.25)}
+.tile:active{transform:scale(.98)}
+.tile .ph{aspect-ratio:1/1;width:100%;display:block;object-fit:cover;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.10),transparent 70%)}
+.tile .noph{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-size:34px;color:rgba(255,255,255,.55);
+  background:radial-gradient(circle at 30% 20%,var(--acc,#ffc65c) 0%,transparent 60%),radial-gradient(circle at 80% 90%,rgba(155,123,255,.6),transparent 60%),#141a30}
+.tile .bd{padding:10px 12px 12px}
+.tile .n{font-weight:600;font-size:13.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:35px}
+.tile .d{color:var(--mut);font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font-family:var(--num);font-weight:700;font-size:22px;margin-top:6px;background:var(--goldg);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pill{display:inline-block;margin-top:5px;padding:3px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;font-weight:500;background:rgba(255,255,255,.08);color:var(--mut)}
+.pill.pos{background:rgba(61,220,151,.16);color:#6dffc0}.pill.neg{background:rgba(255,107,107,.16);color:#ff9a9a}
+.tile .tag{position:absolute;top:10px;left:10px;padding:4px 9px;border-radius:999px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:#fff;background:rgba(10,13,28,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.18)}
+.tile .mkt{position:absolute;top:10px;right:10px;padding:4px 8px;border-radius:999px;font-family:var(--mono);font-size:9.5px;color:#14100a;background:var(--goldg)}
+.fab{box-shadow:0 0 0 1px rgba(255,240,200,.6),0 12px 40px rgba(255,160,60,.45),0 0 30px rgba(255,190,90,.35)}
+.sheet{background:linear-gradient(180deg,#1a2040,#0e1226);border-color:var(--line2)}
+.f input,.f select{background:rgba(255,255,255,.06);border-color:var(--line2)}
+.card h3{color:#fff}
+.empty{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
+.login h1{font-size:30px}
+.mk-foot{flex-wrap:wrap}.mk-foot small{flex:1 1 100%}
