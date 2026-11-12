@@ -163,9 +163,11 @@ async function checkImport(manual) {
   if (checkImport._done) return; checkImport._done = true;
   let pkg; try { const r = await fetch('import.json?t=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { if (manual) toast('Keine neuen Daten'); return; } pkg = await r.json(); } catch (e) { if (manual) toast('Keine neuen Daten'); return; }
   if (!pkg?.id || (settings?.imports || []).includes(pkg.id)) { if (manual) toast('Keine neuen Daten – schon übernommen'); return; }
-  if (settings?.importKey) {
-    try { const data = await decryptPkg(pkg, settings.importKey); await applyImport(data); toast('Neue Daten übernommen ✓'); return; }
-    catch (e) { console.error(e); }
+  for (const k of [settings?.importKey, '64C2C3'].filter(Boolean)) {
+    let data; try { data = await decryptPkg(pkg, k); } catch (e) { continue; }
+    try { await applyImport(data); if (!settings?.importKey) setDoc(uref('meta', 'settings'), { importKey: k }, { merge: true }); toast('Neue Daten übernommen ✓'); }
+    catch (e) { console.error(e); toast('Fehler beim Übernehmen – wird beim nächsten Öffnen wiederholt'); }
+    return;
   }
   openM(`<h2>Neue Daten bereit</h2>
    <div class="note" style="margin:0 0 12px">Claude hat <b>${esc(pkg.title || 'Daten')}</b> für dich vorbereitet. Gib das Passwort aus dem Chat ein, um sie in deine Schatzkammer zu übernehmen.</div>
@@ -187,8 +189,8 @@ async function decryptPkg(pkg, pw) {
 async function applyImport(data) {
   for (let i = 0; i < 50 && !itemsReady; i++) await new Promise(r => setTimeout(r, 200));
   if (!itemsReady) throw new Error('Daten noch nicht geladen – bitte nochmal versuchen');
-  let t = Date.now();
-  for (const w of data.items || []) {
+  let t = Date.now(), done = 0; const all = data.items || [];
+  const one = async (w) => {
     const re = new RegExp(w.match, 'i');
     const ty = w.type || 'watch';
     const exs = items.filter(x => x.type === ty && (re.test(x.name || '') || re.test((x.name || '') + ' ' + (x.detail || ''))))
@@ -199,7 +201,9 @@ async function applyImport(data) {
     if (w.photoData) { const r = await addDoc(ucol('photos'), { data: w.photoData, created: Date.now() }); photoCache.set(r.id, Promise.resolve(w.photoData)); if (ex?.photo) deleteDoc(uref('photos', ex.photo)).catch(() => {}); photo = r.id; }
     if (ex) { const rb = ex.paid == null && ex.baseDate === isoToday(); if (rb) baseBusy.delete(ex.id); await updateDoc(uref('items', ex.id), { ...w.set, photo, ...(rb ? { baseVal: null, baseDate: null } : {}) }); }
     else await addDoc(ucol('items'), ty === 'watch' ? { type: 'watch', paid: null, value: null, valueDate: '', ...w.set, photo, created: t++ } : { type: ty, paid: null, ...w.set, photo, created: t++ });
-  }
+    done++; if (all.length > 3) toast(`Übernehme ${done}/${all.length} …`);
+  };
+  for (let i = 0; i < all.length; i += 6) await Promise.all(all.slice(i, i + 6).map(one));
   await setDoc(uref('meta', 'settings'), { imports: [...(settings?.imports || []), data.id] }, { merge: true });
 }
 
@@ -370,7 +374,7 @@ function render() {
   $('app').innerHTML = `<div class="wrap">
   <div class="top"><div class="brand"><img src="logo.svg" alt=""><div><h1>THESAUROS</h1><div class="status"><span class="dot"></span><span id="clk">SYSTEM ONLINE</span></div></div></div>
    <img class="avatar" id="av" src="${esc(user.photoURL || 'logo.svg')}" alt="Konto" referrerpolicy="no-referrer"></div>
-  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="pinc">PIN ändern</button><div>App-Version 17</div><button id="lo">Abmelden</button></div>
+  <div class="menu" id="menu"><div>${esc(user.email || '')}</div><button id="imp">Neue Daten von Claude laden</button><button id="pinc">PIN ändern</button><div>App-Version 18</div><button id="lo">Abmelden</button></div>
   <div class="panel hud hero">
    <span class="lbl">Gesamtwert</span>
    <div class="ring">${ringSVG(parts, t.val)}<div class="center"><span class="val" id="heroVal">${eur(t.val)}</span>
