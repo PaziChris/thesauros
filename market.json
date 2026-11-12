@@ -1,180 +1,181 @@
 {
-  "updated": "2026-11-11",
-  "note": "Marktpreise für Uhren: Durchschnitt aus aktuellen Angeboten und Verkäufen (Euro). Wird halbjährlich automatisch aktualisiert.",
-  "watches": [
+ "updated": "2026-11-11",
+ "note": "Marktpreise für Uhren: Durchschnitt aus aktuellen Angeboten und Verkäufen (Euro). Wird halbjährlich automatisch aktualisiert.",
+ "watches": [
+  {
+   "match": "constellation",
+   "label": "Omega Constellation 1302.30",
+   "avg": 1810,
+   "min": 1500,
+   "max": 2170,
+   "points": [
     {
-      "match": "constellation",
-      "label": "Omega Constellation 1302.30",
-      "avg": 1810,
-      "min": 1500,
-      "max": 2170,
-      "points": [
-        {
-          "kind": "Marktpreis (Durchschnitt)",
-          "eur": 1760,
-          "src": "WatchCharts, $ 2.024 am 18.10.2026",
-          "url": "https://watchcharts.com/watch_model/3008-omega-constellation-automatic-35-5-1302-30/overview"
-        },
-        {
-          "kind": "Angebot Händler",
-          "eur": 2170,
-          "src": "eBay, $ 2.500",
-          "url": "https://www.ebay.com/itm/405571452005"
-        },
-        {
-          "kind": "Auktion, aktuelles Gebot",
-          "eur": 1500,
-          "src": "Catawiki (Mindestpreis nicht erreicht)",
-          "url": "https://www.catawiki.com/en/l/102957495-omega-constellation-automatic-1302-30-men-2000-2010"
-        }
-      ]
+     "kind": "Marktpreis (Durchschnitt)",
+     "eur": 1760,
+     "src": "WatchCharts, $ 2.024 am 18.10.2026",
+     "url": "https://watchcharts.com/watch_model/3008-omega-constellation-automatic-35-5-1302-30/overview"
     },
     {
-      "match": "gen[eè]ve",
-      "label": "Omega Genève Automatic (Vintage, vergoldet)",
-      "avg": 870,
-      "min": 630,
-      "max": 1395,
-      "points": [
-        {
-          "kind": "Auktion verkauft",
-          "eur": 630,
-          "src": "Catawiki, Genève Automatic vergoldet, 1970er",
-          "url": "https://www.catawiki.com/de/l/100120182-omega-geneve-1970-1979"
-        },
-        {
-          "kind": "Auktion verkauft",
-          "eur": 660,
-          "src": "Catawiki, Ref. 166.0168 vergoldet",
-          "url": "https://www.catawiki.com/de/l/104393762-omega-geneve-automatic-oversize-case-166-0168-1970-1979"
-        },
-        {
-          "kind": "Auktion verkauft",
-          "eur": 800,
-          "src": "Catawiki, Ref. 166.098 (1972)",
-          "url": "https://www.catawiki.com/de/l/104932046-omega-geneve-166-098-1972"
-        },
-        {
-          "kind": "Angebot Händler",
-          "eur": 1395,
-          "src": "Wristler, Ref. 166.763 vergoldet (1973)",
-          "url": "https://wristler.eu/de/uhren/221447-omega-geneve"
-        }
-      ]
+     "kind": "Angebot Händler",
+     "eur": 2170,
+     "src": "eBay, $ 2.500",
+     "url": "https://www.ebay.com/itm/405571452005"
     },
     {
-      "match": "moonswatch|earthphase",
-      "label": "Omega x Swatch MoonSwatch Mission to Earthphase (SO33M700), Full Set",
-      "avg": 330,
-      "min": 264,
-      "max": 409,
-      "points": [
-        {
-          "kind": "Marktdurchschnitt (35 Angebote)",
-          "eur": 305,
-          "src": "WatchPatrol, $350 (Spanne $325–375)",
-          "url": "https://www.watchpatrol.net/de/entdecken/marken/swatch/mission-to-jupiter/"
-        },
-        {
-          "kind": "Angebot privat",
-          "eur": 264,
-          "src": "Uhrforum, $303",
-          "url": "https://www.watchpatrol.net/listing/2594353/"
-        },
-        {
-          "kind": "Angebot privat",
-          "eur": 293,
-          "src": "Horloge Forum, $337",
-          "url": "https://www.watchpatrol.net/listing/3472608/"
-        },
-        {
-          "kind": "Verkauft (neu, mit Kaufbeleg)",
-          "eur": 383,
-          "src": "eBay, $439,99",
-          "url": "https://www.ebay.de/itm/257055020412"
-        },
-        {
-          "kind": "Verkauft",
-          "eur": 409,
-          "src": "eBay, $469,90",
-          "url": "https://www.ebay.de/itm/236014042845"
-        }
-      ]
-    },
-    {
-      "match": "fossil|fs6092",
-      "label": "Fossil Blue GMT FS6092 (Coke-Lünette)",
-      "avg": 150,
-      "min": 136,
-      "max": 164,
-      "points": [
-        {
-          "kind": "Neupreis Händler (reduziert)",
-          "eur": 164,
-          "src": "watchesonline.com, UVP 219 €",
-          "url": "https://watchesonline.com/fossil-blue-gmt-silver-fs6092"
-        },
-        {
-          "kind": "Neupreis Händler",
-          "eur": 136,
-          "src": "Newegg, $156,17",
-          "url": "https://www.newegg.com/p/00I-000K-00NJ4"
-        }
-      ]
-    },
-    {
-      "match": "luch|sowjet|bogorod",
-      "label": "Luch Quarz L2356 (UdSSR) mit Ikonen-Zifferblatt „Bogoroditsa“ (Muttergottes mit Kind)",
-      "avg": 60,
-      "min": 43,
-      "max": 70,
-      "points": [
-        {
-          "kind": "Angebot – genau dieses Modell (Muttergottes & Kind)",
-          "eur": 43,
-          "src": "eBay, US $49,99",
-          "url": "https://www.ebay.com/b/Luch-Watches/31387/bn_3006737"
-        },
-        {
-          "kind": "Angebot Luch Quarz L2356 (Standard-Zifferblatt)",
-          "eur": 67,
-          "src": "eBay, $76,89",
-          "url": "https://www.ebay.com.au/itm/156987997704"
-        },
-        {
-          "kind": "Angebot Händler Luch Quarz",
-          "eur": 70,
-          "src": "Soviet Watch Store, $79,95",
-          "url": "https://sovietwatchstore.com/index.php/product/soviet-luch-watch-with-quartz-movement/"
-        }
-      ]
-    },
-    {
-      "match": "sperulino|susm402",
-      "label": "Swatch Sperulino SUSM402 (Neuzustand; getragen meist 50–70 €)",
-      "avg": 120,
-      "min": 105,
-      "max": 125,
-      "points": [
-        {
-          "kind": "Neupreis OVP Händler (nicht lieferbar)",
-          "eur": 125,
-          "src": "watchpapst.de",
-          "url": "https://www.watchpapst.de/de/sperulino-susm402.html"
-        },
-        {
-          "kind": "Neupreis Händler",
-          "eur": 125,
-          "src": "Crivelli Shopping",
-          "url": "https://crivellishopping.it/de/swatch-herrenuhr-susm402-originals-chrono-plastic-sperulino-chronograph"
-        },
-        {
-          "kind": "Ursprünglicher Ladenpreis",
-          "eur": 105,
-          "src": "Switzerwatch",
-          "url": "https://www.switzerwatch.com/english-swatch-new-chrono-plastic/watch-swatch-sperulino.html"
-        }
-      ]
+     "kind": "Auktion, aktuelles Gebot",
+     "eur": 1500,
+     "src": "Catawiki (Mindestpreis nicht erreicht)",
+     "url": "https://www.catawiki.com/en/l/102957495-omega-constellation-automatic-1302-30-men-2000-2010"
     }
-  ]
+   ]
+  },
+  {
+   "match": "gen[eè]ve",
+   "label": "Omega Genève Automatic (Vintage, vergoldet)",
+   "avg": 870,
+   "min": 630,
+   "max": 1395,
+   "points": [
+    {
+     "kind": "Auktion verkauft",
+     "eur": 630,
+     "src": "Catawiki, Genève Automatic vergoldet, 1970er",
+     "url": "https://www.catawiki.com/de/l/100120182-omega-geneve-1970-1979"
+    },
+    {
+     "kind": "Auktion verkauft",
+     "eur": 660,
+     "src": "Catawiki, Ref. 166.0168 vergoldet",
+     "url": "https://www.catawiki.com/de/l/104393762-omega-geneve-automatic-oversize-case-166-0168-1970-1979"
+    },
+    {
+     "kind": "Auktion verkauft",
+     "eur": 800,
+     "src": "Catawiki, Ref. 166.098 (1972)",
+     "url": "https://www.catawiki.com/de/l/104932046-omega-geneve-166-098-1972"
+    },
+    {
+     "kind": "Angebot Händler",
+     "eur": 1395,
+     "src": "Wristler, Ref. 166.763 vergoldet (1973)",
+     "url": "https://wristler.eu/de/uhren/221447-omega-geneve"
+    }
+   ]
+  },
+  {
+   "match": "moonswatch|earthphase",
+   "label": "Omega x Swatch MoonSwatch Mission to Earthphase (SO33M700), Full Set",
+   "avg": 330,
+   "min": 264,
+   "max": 409,
+   "points": [
+    {
+     "kind": "Marktdurchschnitt (35 Angebote)",
+     "eur": 305,
+     "src": "WatchPatrol, $350 (Spanne $325–375)",
+     "url": "https://www.watchpatrol.net/de/entdecken/marken/swatch/mission-to-jupiter/"
+    },
+    {
+     "kind": "Angebot privat",
+     "eur": 264,
+     "src": "Uhrforum, $303",
+     "url": "https://www.watchpatrol.net/listing/2594353/"
+    },
+    {
+     "kind": "Angebot privat",
+     "eur": 293,
+     "src": "Horloge Forum, $337",
+     "url": "https://www.watchpatrol.net/listing/3472608/"
+    },
+    {
+     "kind": "Verkauft (neu, mit Kaufbeleg)",
+     "eur": 383,
+     "src": "eBay, $439,99",
+     "url": "https://www.ebay.de/itm/257055020412"
+    },
+    {
+     "kind": "Verkauft",
+     "eur": 409,
+     "src": "eBay, $469,90",
+     "url": "https://www.ebay.de/itm/236014042845"
+    }
+   ]
+  },
+  {
+   "match": "fossil|fs6092",
+   "label": "Fossil Blue GMT FS6092 (Coke-Lünette)",
+   "avg": 150,
+   "min": 136,
+   "max": 164,
+   "points": [
+    {
+     "kind": "Neupreis Händler (reduziert)",
+     "eur": 164,
+     "src": "watchesonline.com, UVP 219 €",
+     "url": "https://watchesonline.com/fossil-blue-gmt-silver-fs6092"
+    },
+    {
+     "kind": "Neupreis Händler",
+     "eur": 136,
+     "src": "Newegg, $156,17",
+     "url": "https://www.newegg.com/p/00I-000K-00NJ4"
+    }
+   ]
+  },
+  {
+   "match": "luch|sowjet|bogorod",
+   "label": "Luch Quarz L2356 (UdSSR) mit Ikonen-Zifferblatt „Bogoroditsa“ (Muttergottes mit Kind)",
+   "avg": 150,
+   "min": 85,
+   "max": 420,
+   "points": [
+    {
+     "kind": "Angebot – genau dieses Modell (Muttergottes & Kind)",
+     "eur": 43,
+     "src": "eBay, US $49,99",
+     "url": "https://www.ebay.com/b/Luch-Watches/31387/bn_3006737"
+    },
+    {
+     "kind": "Angebot Luch Quarz L2356 (Standard-Zifferblatt)",
+     "eur": 67,
+     "src": "eBay, $76,89",
+     "url": "https://www.ebay.com.au/itm/156987997704"
+    },
+    {
+     "kind": "Angebot Händler Luch Quarz",
+     "eur": 70,
+     "src": "Soviet Watch Store, $79,95",
+     "url": "https://sovietwatchstore.com/index.php/product/soviet-luch-watch-with-quartz-movement/"
+    }
+   ],
+   "note": "Seltenes Bogoroditsa-/Ikonen-Zifferblatt, kaum online. Vergleich: ungewöhnliche Luch-Zifferblätter 89–490 $ (Etsy, SovietWatchStore, Dumarko); einfache Luch 45–120 €."
+  },
+  {
+   "match": "sperulino|susm402",
+   "label": "Swatch Sperulino SUSM402 (Neuzustand; getragen meist 50–70 €)",
+   "avg": 120,
+   "min": 105,
+   "max": 125,
+   "points": [
+    {
+     "kind": "Neupreis OVP Händler (nicht lieferbar)",
+     "eur": 125,
+     "src": "watchpapst.de",
+     "url": "https://www.watchpapst.de/de/sperulino-susm402.html"
+    },
+    {
+     "kind": "Neupreis Händler",
+     "eur": 125,
+     "src": "Crivelli Shopping",
+     "url": "https://crivellishopping.it/de/swatch-herrenuhr-susm402-originals-chrono-plastic-sperulino-chronograph"
+    },
+    {
+     "kind": "Ursprünglicher Ladenpreis",
+     "eur": 105,
+     "src": "Switzerwatch",
+     "url": "https://www.switzerwatch.com/english-swatch-new-chrono-plastic/watch-swatch-sperulino.html"
+    }
+   ]
+  }
+ ]
 }
